@@ -76,3 +76,13 @@ textarea:focus {
 .btn-primary-modern:hover {
   background: #1d3d68;
 }
+
+a,
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
