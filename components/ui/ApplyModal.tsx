@@ -35,7 +35,7 @@ export default function ApplyModal({
 
   return (
     <>
-      <button onClick={handleOpen} className="w-full bg-primary hover:bg-primary-light text-white py-3 rounded-md font-medium text-center transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
+      <button onClick={handleOpen} className="w-full bg-action hover:bg-action-light text-white py-3 rounded-md font-semibold text-center transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
         Apply Now
       </button>
 
@@ -45,7 +45,7 @@ export default function ApplyModal({
             <div className="p-6 border-b">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-primary">Apply for {jobTitle}</h2>
-                <button onClick={handleClose} className="text-slate-400 hover:text-slate-600">
+                <button onClick={handleClose} className="text-slate-500 hover:text-slate-800 transition-colors">
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
@@ -55,8 +55,8 @@ export default function ApplyModal({
               {error && <div className="p-3 bg-red-100 text-red-700 text-base font-medium rounded-md mb-4">{error}</div>}
               
               <div className="mb-4">
-                <p className="text-sm text-slate-600 mb-4">Your completely secure profile and resume will be sent directly to the employer immediately.</p>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Cover Note <span className="text-slate-400 font-normal">(Optional)</span></label>
+                <p className="text-sm text-slate-700 mb-4">Your completely secure profile and resume will be sent directly to the employer immediately.</p>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Cover Note <span className="text-slate-500 font-normal">(Optional)</span></label>
                 <textarea 
                   name="cover_note" 
                   rows={5} 
@@ -66,10 +66,10 @@ export default function ApplyModal({
               </div>
               
               <div className="flex gap-4 mt-6">
-                <button type="button" onClick={handleClose} className="flex-1 px-4 py-2 border text-slate-700 font-medium rounded-md hover:bg-slate-50 transition-colors">
+                <button type="button" onClick={handleClose} className="flex-1 px-4 py-2 border text-slate-800 font-semibold rounded-md hover:bg-slate-50 transition-colors">
                   Cancel
                 </button>
-                <button type="submit" disabled={loading} className="flex-1 px-4 py-2 bg-primary text-white font-medium rounded-md hover:bg-primary-light transition-colors disabled:opacity-50">
+                <button type="submit" disabled={loading} className="flex-1 px-4 py-2 bg-action text-white font-semibold rounded-md hover:bg-action-light transition-colors disabled:opacity-50">
                   {loading ? 'Sending...' : 'Submit Application'}
                 </button>
               </div>
