@@ -1,14 +1,23 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { loginSchema } from '@/utils/validation/forms'
 
 export default async function LoginPage(props: { searchParams: Promise<{ message?: string }> }) {
   const searchParams = await props.searchParams;
   const signIn = async (formData: FormData) => {
     'use server'
 
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
+    const parsed = loginSchema.safeParse({
+      email: formData.get('email'),
+      password: formData.get('password'),
+    })
+    if (!parsed.success) {
+      const message = encodeURIComponent(parsed.error.issues[0]?.message || 'Invalid login details')
+      return redirect(`/login?message=${message}`)
+    }
+
+    const { email, password } = parsed.data
     const supabase = await createClient()
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -48,7 +57,7 @@ export default async function LoginPage(props: { searchParams: Promise<{ message
       </Link>
 
       <form
-        className="animate-in flex-1 flex flex-col w-full justify-center gap-4 text-slate-800 surface-card p-8"
+        className="animate-in flex-1 flex flex-col w-full justify-center gap-4 text-slate-800 surface-card p-8 border border-slate-200"
         action={signIn}
       >
         <div className="text-center space-y-2 mb-6">
@@ -88,7 +97,10 @@ export default async function LoginPage(props: { searchParams: Promise<{ message
           <Link href="/forgot-password">Forgot password?</Link>
         </div>
 
-        <button className="bg-action hover:bg-action-light text-white rounded-md px-4 py-2 font-semibold mb-2 w-full transition-colors">
+        <button
+          className="text-white rounded-md px-4 py-3 font-bold mb-2 w-full transition-colors shadow-md hover:brightness-110"
+          style={{ backgroundColor: '#102A4C' }}
+        >
           Sign In
         </button>
         

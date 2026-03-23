@@ -2,9 +2,11 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
+import { jobEditSchema } from '@/utils/validation/forms'
 
-export default async function EditJobPage(props: { params: Promise<{ id: string }> }) {
+export default async function EditJobPage(props: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const params = await props.params;
+  const searchParams = await props.searchParams;
   const supabase = await createClient()
   
   const { data: job, error: fetchErr } = await supabase
@@ -21,18 +23,25 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
     'use server'
     const supabase = await createClient()
 
-    const action = formData.get('action') as string // 'draft' | 'publish' | 'closed'
-    const status = action === 'publish' ? 'active' : action === 'draft' ? 'draft' : 'closed'
+    const parsed = jobEditSchema.safeParse({
+      action: formData.get('action'),
+      title: formData.get('title'),
+      category: formData.get('category'),
+      role_type: formData.get('role_type'),
+      location: formData.get('location'),
+      experience_level: formData.get('experience_level'),
+      description: formData.get('description'),
+      requirements: formData.get('requirements'),
+      salary_range: formData.get('salary_range'),
+      deadline: formData.get('deadline'),
+    })
+    if (!parsed.success) {
+      const message = encodeURIComponent(parsed.error.issues[0]?.message || 'Invalid job data')
+      return redirect(`/employer/jobs/${params.id}/edit?error=${message}`)
+    }
 
-    const title = formData.get('title') as string
-    const category = formData.get('category') as string
-    const role_type = formData.get('role_type') as string
-    const location = formData.get('location') as string
-    const experience_level = formData.get('experience_level') as string
-    const description = formData.get('description') as string
-    const requirements = formData.get('requirements') as string
-    const salary_range = formData.get('salary_range') as string
-    const deadline = formData.get('deadline') as string
+    const { action, title, category, role_type, location, experience_level, description, requirements, salary_range, deadline } = parsed.data
+    const status = action === 'publish' ? 'active' : action === 'draft' ? 'draft' : 'closed'
 
     const { error } = await supabase.from('jobs').update({
       title,
@@ -85,6 +94,11 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
       <h1 className="text-3xl font-serif font-bold text-primary mb-8">Edit Job: {job.title}</h1>
       
       <div className="surface-card p-6 sm:p-8">
+        {searchParams?.error && (
+          <p className="mb-6 p-4 bg-red-100 text-red-700 text-sm border-l-4 border-red-500 rounded">
+            {searchParams.error}
+          </p>
+        )}
         <form action={updateJob} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">

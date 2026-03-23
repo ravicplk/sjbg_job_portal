@@ -28,13 +28,16 @@ export default async function NavBar() {
           <div className="flex items-center space-x-3 sm:space-x-5">
             {!user ? (
               <>
-                <Link href="/login" className="text-base font-semibold text-white hover:text-accent px-2 transition-colors">
+                <Link
+                  href="/login"
+                  className="text-base font-semibold text-white hover:text-accent px-2 transition-colors"
+                >
                   Sign in
                 </Link>
                 <Link href="/register" className="text-base font-semibold text-white bg-action hover:bg-action-light px-5 py-2.5 rounded-md transition-colors">
                   Join
                 </Link>
-                <Link href="/register" className="text-base font-semibold text-white border border-white/60 hover:text-accent hover:border-accent px-5 py-2.5 rounded-md transition-colors hidden sm:block">
+                <Link href="/register" className="text-base font-semibold text-white bg-primary-light hover:bg-primary text-accent px-5 py-2.5 rounded-md transition-colors hidden sm:block">
                   Post a job
                 </Link>
               </>
@@ -65,11 +68,16 @@ export default async function NavBar() {
                     Admin Panel
                   </Link>
                 )}
-                <form action="/api/auth/logout" method="POST" className="inline-flex">
-                   <button type="submit" className="text-base font-semibold text-white hover:text-accent ml-2 sm:ml-4 transition-colors">
-                     Log out
-                   </button>
-                </form>
+                <Link
+                  href="/account"
+                  className="ml-2 sm:ml-4 inline-flex items-center justify-center w-10 h-10 rounded-full bg-action hover:bg-action-light text-white transition-colors"
+                  aria-label="Open profile details"
+                  title="Profile details"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </Link>
               </>
             )}
           </div>
