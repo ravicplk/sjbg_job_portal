@@ -93,17 +93,17 @@ export default async function Home(props: {
       </section>
 
       {/* Main Content */}
-      <section className="w-full max-w-6xl mx-auto px-4 py-14 flex flex-col md:flex-row gap-10">
+      <section className="w-full max-w-6xl mx-auto px-4 py-14 flex flex-col md:flex-row gap-8">
         
         {/* Filters Sidebar */}
-        <aside className="w-full md:w-72 flex-shrink-0">
-           <form action="/" className="space-y-6 sticky top-28 surface-card p-5">
+        <aside className="w-full md:w-80 flex-shrink-0">
+           <form action="/" className="space-y-5 sticky top-28 surface-card p-6">
              {/* Retain search inputs if they apply filters */}
              <input type="hidden" name="q" value={searchParams.q || ''} />
              <input type="hidden" name="location" value={searchParams.location || ''} />
 
-             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-               <h3 className="font-semibold text-[#333333] text-sm uppercase tracking-wider">Filter Jobs</h3>
+             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+               <h3 className="font-semibold text-[#333333] text-sm uppercase tracking-wider">Smart Filters</h3>
                {hasActiveFilters && (
                  <Link href="/" className="text-xs font-semibold text-primary hover:text-action transition-colors">
                    Reset all
@@ -148,7 +148,7 @@ export default async function Home(props: {
                </select>
              </div>
 
-             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-3 pt-1">
+             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-3 pt-2">
                <button type="submit" className="w-full bg-action text-white hover:bg-action-light px-4 py-2.5 rounded-lg transition-colors text-sm font-semibold">
                  Apply Filters
                </button>
@@ -163,7 +163,7 @@ export default async function Home(props: {
 
         {/* Job Listings Area */}
         <div className="flex-1 max-w-4xl w-full">
-           <div className="mb-6 flex justify-between items-end">
+           <div className="mb-6 surface-card p-4 sm:p-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
              <h2 className="text-xl font-semibold text-[#333333]">
                {jobs && jobs.length > 0 ? (
                  <>Found <span className="text-primary">{jobs.length}</span> active job{jobs.length !== 1 && 's'}</>
@@ -171,6 +171,7 @@ export default async function Home(props: {
                  'Job Listings'
                )}
              </h2>
+             <p className="text-sm text-slate-600">Fresh opportunities from trusted local employers.</p>
            </div>
 
            <div className="space-y-4">

@@ -1,8 +1,10 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { employerProfileSchema, isValidLogoFile } from '@/utils/validation/forms'
 
-export default async function EmployerProfile() {
+export default async function EmployerProfile(props: { searchParams: Promise<{ error?: string }> }) {
+  const searchParams = await props.searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   
@@ -22,6 +24,10 @@ export default async function EmployerProfile() {
     let logo_url = profile?.logo_url
 
     if (logoFile && logoFile.size > 0 && user) {
+      if (!isValidLogoFile(logoFile)) {
+        const message = encodeURIComponent('Logo must be an image file smaller than 5MB')
+        return redirect(`/employer/profile?error=${message}`)
+      }
       const fileExt = logoFile.name.split('.').pop()
       const fileName = `${user.id}-${Math.random()}.${fileExt}`
       const { data, error } = await supabase.storage.from('company-logos').upload(fileName, logoFile, { upsert: true })
@@ -29,14 +35,25 @@ export default async function EmployerProfile() {
       if (!error) {
         const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(fileName)
         logo_url = publicUrl
+      } else {
+        const message = encodeURIComponent(error.message || 'Could not upload logo')
+        return redirect(`/employer/profile?error=${message}`)
       }
     }
 
-    const company_name = formData.get('company_name') as string
-    const industry = formData.get('industry') as string
-    const website = formData.get('website') as string
-    const phone = formData.get('phone') as string
-    const about = formData.get('about') as string
+    const parsed = employerProfileSchema.safeParse({
+      company_name: formData.get('company_name'),
+      industry: formData.get('industry'),
+      website: formData.get('website'),
+      phone: formData.get('phone'),
+      about: formData.get('about'),
+    })
+    if (!parsed.success) {
+      const message = encodeURIComponent(parsed.error.issues[0]?.message || 'Invalid company profile data')
+      return redirect(`/employer/profile?error=${message}`)
+    }
+
+    const { company_name, industry, website, phone, about } = parsed.data
 
     await supabase.from('employer_profiles').update({
       company_name,
@@ -60,6 +77,11 @@ export default async function EmployerProfile() {
       <h1 className="text-3xl font-serif font-bold text-primary mb-8">Company Profile</h1>
       
       <div className="surface-card p-6 sm:p-8">
+        {searchParams?.error && (
+          <p className="mb-6 p-4 bg-red-100 text-red-700 text-sm border-l-4 border-red-500 rounded">
+            {searchParams.error}
+          </p>
+        )}
         <form action={updateProfile} className="space-y-6">
           
           <div className="flex items-center gap-6 mb-8 border-b pb-8">

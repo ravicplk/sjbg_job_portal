@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import ApplyModal from '@/components/ui/ApplyModal'
 import { revalidatePath } from 'next/cache'
+import { applicationSchema } from '@/utils/validation/forms'
 
 export default async function JobDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -41,7 +42,11 @@ export default async function JobDetailPage(props: { params: Promise<{ id: strin
     if (!profile) return { error: 'Profile not found' }
     if (!profile.resume_url) return { error: 'You must fully upload a resume to your profile before applying. Visit your Seeker Dashboard.' }
 
-    const cover_note = formData.get('cover_note') as string
+    const parsed = applicationSchema.safeParse({
+      cover_note: formData.get('cover_note'),
+    })
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message || 'Invalid application data' }
+    const { cover_note } = parsed.data
     
     const { error } = await supabase.from('applications').insert({
       job_id: jobId,

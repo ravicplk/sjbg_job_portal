@@ -2,8 +2,10 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
+import { isValidResumeFile, seekerProfileSchema } from '@/utils/validation/forms'
 
-export default async function SeekerProfile() {
+export default async function SeekerProfile(props: { searchParams: Promise<{ error?: string }> }) {
+  const searchParams = await props.searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   
@@ -27,19 +29,34 @@ export default async function SeekerProfile() {
     let resume_url = existingProfile?.resume_url
 
     if (resumeFile && resumeFile.size > 0 && user) {
+      if (!isValidResumeFile(resumeFile)) {
+        const message = encodeURIComponent('Resume must be PDF/DOC/DOCX and less than 5MB')
+        return redirect(`/profile?error=${message}`)
+      }
       const fileExt = resumeFile.name.split('.').pop()
       const fileName = `${user.id}-${Math.random()}.${fileExt}`
       const { data, error } = await supabase.storage.from('resumes').upload(fileName, resumeFile, { upsert: true })
       
       if (!error && data) {
         resume_url = data.path
+      } else if (error) {
+        const message = encodeURIComponent(error.message || 'Could not upload resume')
+        return redirect(`/profile?error=${message}`)
       }
     }
 
-    const headline = formData.get('headline') as string
-    const location = formData.get('location') as string
-    const phone = formData.get('phone') as string
-    const linkedin_url = formData.get('linkedin_url') as string
+    const parsed = seekerProfileSchema.safeParse({
+      headline: formData.get('headline'),
+      location: formData.get('location'),
+      phone: formData.get('phone'),
+      linkedin_url: formData.get('linkedin_url'),
+    })
+    if (!parsed.success) {
+      const message = encodeURIComponent(parsed.error.issues[0]?.message || 'Invalid profile data')
+      return redirect(`/profile?error=${message}`)
+    }
+
+    const { headline, location, phone, linkedin_url } = parsed.data
 
     await supabase.from('seeker_profiles').update({
       headline,
@@ -71,6 +88,11 @@ export default async function SeekerProfile() {
       <h1 className="text-3xl font-serif font-bold text-primary mb-8">My Profile</h1>
       
       <div className="surface-card p-6 sm:p-8">
+        {searchParams?.error && (
+          <p className="mb-6 p-4 bg-red-100 text-red-700 text-sm border-l-4 border-red-500 rounded">
+            {searchParams.error}
+          </p>
+        )}
         <form action={updateProfile} className="space-y-6">
           
           <div className="flex items-start gap-6 mb-8 border-b pb-8">

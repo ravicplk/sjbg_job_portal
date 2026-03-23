@@ -2,8 +2,10 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
+import { jobCreateSchema } from '@/utils/validation/forms'
 
-export default async function NewJobPage() {
+export default async function NewJobPage(props: { searchParams: Promise<{ error?: string }> }) {
+  const searchParams = await props.searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   
@@ -13,18 +15,25 @@ export default async function NewJobPage() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase.from('employer_profiles').select('id').eq('user_id', user!.id).single()
 
-    const action = formData.get('action') as string // 'draft' | 'publish'
-    const status = action === 'publish' ? 'active' : 'draft'
+    const parsed = jobCreateSchema.safeParse({
+      action: formData.get('action'),
+      title: formData.get('title'),
+      category: formData.get('category'),
+      role_type: formData.get('role_type'),
+      location: formData.get('location'),
+      experience_level: formData.get('experience_level'),
+      description: formData.get('description'),
+      requirements: formData.get('requirements'),
+      salary_range: formData.get('salary_range'),
+      deadline: formData.get('deadline'),
+    })
+    if (!parsed.success) {
+      const message = encodeURIComponent(parsed.error.issues[0]?.message || 'Invalid job data')
+      return redirect(`/employer/jobs/new?error=${message}`)
+    }
 
-    const title = formData.get('title') as string
-    const category = formData.get('category') as string
-    const role_type = formData.get('role_type') as string
-    const location = formData.get('location') as string
-    const experience_level = formData.get('experience_level') as string
-    const description = formData.get('description') as string
-    const requirements = formData.get('requirements') as string
-    const salary_range = formData.get('salary_range') as string
-    const deadline = formData.get('deadline') as string
+    const { action, title, category, role_type, location, experience_level, description, requirements, salary_range, deadline } = parsed.data
+    const status = action === 'publish' ? 'active' : 'draft'
 
     const { error } = await supabase.from('jobs').insert({
       employer_id: profile!.id,
@@ -60,6 +69,11 @@ export default async function NewJobPage() {
       <h1 className="text-3xl font-serif font-bold text-primary mb-8">Post a New Job</h1>
       
       <div className="surface-card p-6 sm:p-8">
+        {searchParams?.error && (
+          <p className="mb-6 p-4 bg-red-100 text-red-700 text-sm border-l-4 border-red-500 rounded">
+            {searchParams.error}
+          </p>
+        )}
         <form action={saveJob} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
