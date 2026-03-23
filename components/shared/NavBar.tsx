@@ -30,54 +30,49 @@ export default async function NavBar() {
               <>
                 <Link
                   href="/login"
-                  className="text-base font-semibold text-white hover:text-accent px-2 transition-colors"
+                  className="text-base font-semibold text-white bg-primary-light hover:bg-accent hover:text-primary-dark px-5 py-2.5 rounded-md transition-colors shadow-sm cursor-pointer"
                 >
                   Sign in
                 </Link>
-                <Link href="/register" className="text-base font-semibold text-white bg-action hover:bg-action-light px-5 py-2.5 rounded-md transition-colors">
-                  Join
-                </Link>
-                <Link href="/register" className="text-base font-semibold text-white bg-primary-light hover:bg-primary text-accent px-5 py-2.5 rounded-md transition-colors hidden sm:block">
-                  Post a job
+                <Link href="/register" className="text-base font-semibold text-white bg-action hover:bg-accent hover:text-primary-dark px-5 py-2.5 rounded-md transition-colors shadow-sm cursor-pointer">
+                  Sign up
                 </Link>
               </>
             ) : (
               <>
                 {role === 'employer' && (
                 <>
-                <Link href="/employer/dashboard" className="text-base text-white hover:text-accent font-semibold transition-colors">Dashboard</Link>
-                <Link href="/employer/profile" className="text-base text-white hover:text-accent font-semibold transition-colors">Profile</Link>
-                <Link href="/employer/jobs/new" className="bg-action hover:bg-action-light text-white px-5 py-2.5 rounded-md font-semibold transition-colors text-base shadow-sm">Post a Job</Link>
+                <Link href="/employer/dashboard" className="text-base text-white hover:text-accent font-semibold transition-colors cursor-pointer">Dashboard</Link>
+                <Link href="/employer/profile" className="text-base text-white hover:text-accent font-semibold transition-colors cursor-pointer">Profile</Link>
+                <Link href="/employer/jobs/new" className="bg-action hover:bg-action-light text-white px-5 py-2.5 rounded-md font-semibold transition-colors text-base shadow-sm cursor-pointer">Post a Job</Link>
                 </>
               )}
                 {role === 'job_seeker' && (
                   <>
-                    <Link href="/dashboard" className="text-base font-semibold text-white hover:text-accent px-2 transition-colors">
+                    <Link href="/dashboard" className="text-base font-semibold text-white hover:text-accent px-2 transition-colors cursor-pointer">
                        Dashboard
                     </Link>
-                    <Link href="/profile" className="text-base font-semibold text-white hover:text-accent px-2 transition-colors">
+                    <Link href="/profile" className="text-base font-semibold text-white hover:text-accent px-2 transition-colors cursor-pointer">
                        Profile
                     </Link>
-                    <Link href="/resume-builder" className="text-base font-semibold text-white bg-action hover:bg-action-light px-4 py-2 rounded-md transition-colors ml-2">
+                    <Link href="/resume-builder" className="text-base font-semibold text-white bg-action hover:bg-action-light px-4 py-2 rounded-md transition-colors ml-2 cursor-pointer">
                        Resume Builder
                     </Link>
                   </>
                 )}
                 {role === 'admin' && (
-                  <Link href="/admin/dashboard" className="text-base font-semibold text-white hover:text-accent transition-colors">
+                  <Link href="/admin/dashboard" className="text-base font-semibold text-white hover:text-accent transition-colors cursor-pointer">
                     Admin Panel
                   </Link>
                 )}
-                <Link
-                  href="/account"
-                  className="ml-2 sm:ml-4 inline-flex items-center justify-center w-10 h-10 rounded-full bg-action hover:bg-action-light text-white transition-colors"
-                  aria-label="Open profile details"
-                  title="Profile details"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </Link>
+                <form action="/api/auth/logout" method="POST" className="inline-flex ml-2 sm:ml-4">
+                  <button
+                    type="submit"
+                    className="text-base font-semibold text-white bg-action hover:bg-accent hover:text-primary-dark px-5 py-2.5 rounded-md transition-colors shadow-sm cursor-pointer"
+                  >
+                    Log out
+                  </button>
+                </form>
               </>
             )}
           </div>
