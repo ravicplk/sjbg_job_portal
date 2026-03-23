@@ -59,7 +59,7 @@ export default async function EmployerProfile() {
       
       <h1 className="text-3xl font-serif font-bold text-primary mb-8">Company Profile</h1>
       
-      <div className="bg-white border rounded-lg p-6 sm:p-8 shadow-sm">
+      <div className="surface-card p-6 sm:p-8">
         <form action={updateProfile} className="space-y-6">
           
           <div className="flex items-center gap-6 mb-8 border-b pb-8">
@@ -105,7 +105,7 @@ export default async function EmployerProfile() {
           </div>
           
           <div className="pt-4 border-t border-slate-100 flex justify-end">
-             <button type="submit" className="px-8 py-3 bg-primary text-white font-medium rounded-md hover:bg-primary-light transition-colors shadow-sm">
+             <button type="submit" className="px-8 py-3 bg-action text-white font-semibold rounded-md hover:bg-action-light transition-colors shadow-sm">
                Save Profile
              </button>
           </div>

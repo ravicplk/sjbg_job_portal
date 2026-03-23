@@ -184,7 +184,7 @@ export default function ResumeBuilder({ userProfile }: { userProfile: any }) {
           <button onClick={() => generatePDF(false)} disabled={loading} className="flex-1 bg-white border border-slate-300 text-slate-700 py-3 rounded-md font-medium hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50">
             Download PDF
           </button>
-          <button onClick={() => generatePDF(true)} disabled={loading} className="flex-1 bg-primary text-white py-3 rounded-md font-medium hover:bg-primary-light transition-colors shadow-sm disabled:opacity-50">
+          <button onClick={() => generatePDF(true)} disabled={loading} className="flex-1 bg-action text-white py-3 rounded-md font-semibold hover:bg-action-light transition-colors shadow-sm disabled:opacity-50">
             {loading ? 'Processing...' : 'Save to Profile'}
           </button>
         </div>

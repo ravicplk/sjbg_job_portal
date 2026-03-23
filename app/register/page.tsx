@@ -53,7 +53,7 @@ export default function RegisterPage() {
     <div className="flex-1 flex flex-col w-full px-8 sm:max-w-lg justify-center gap-2 mx-auto my-12">
       <Link
         href="/"
-        className="absolute left-8 top-8 py-2 px-4 rounded-md no-underline text-sm flex items-center group text-primary hover:bg-slate-200"
+        className="absolute left-8 top-8 py-2 px-4 rounded-md no-underline text-sm flex items-center group text-primary hover:bg-amber-50"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1">
           <polyline points="15 18 9 12 15 6" />
@@ -61,9 +61,9 @@ export default function RegisterPage() {
         Back
       </Link>
 
-      <form className="animate-in flex-1 flex flex-col w-full justify-center text-slate-800" onSubmit={signUp}>
+      <form className="animate-in flex-1 flex flex-col w-full justify-center text-slate-800 surface-card p-8" onSubmit={signUp}>
         <div className="text-center space-y-2 mb-8">
-          <h1 className="text-3xl font-serif text-primary font-semibold">Join the Guild</h1>
+          <h1 className="text-3xl font-bold text-primary">Join the Guild</h1>
           <p className="text-sm text-slate-500">Create your account to start hiring or finding jobs.</p>
         </div>
 
@@ -81,8 +81,8 @@ export default function RegisterPage() {
               onClick={() => setRole('job_seeker')}
               className={`p-4 border-2 rounded-lg text-left transition-all ${
                 role === 'job_seeker' 
-                  ? 'border-accent bg-accent/5 ring-1 ring-accent' 
-                  : 'border-slate-200 hover:border-slate-300'
+                  ? 'border-accent bg-amber-50 ring-1 ring-accent' 
+                  : 'border-slate-200 hover:border-primary/40'
               }`}
             >
               <h3 className="font-bold text-primary">Job Seeker</h3>
@@ -93,8 +93,8 @@ export default function RegisterPage() {
               onClick={() => setRole('employer')}
               className={`p-4 border-2 rounded-lg text-left transition-all ${
                 role === 'employer' 
-                  ? 'border-accent bg-accent/5 ring-1 ring-accent' 
-                  : 'border-slate-200 hover:border-slate-300'
+                  ? 'border-accent bg-amber-50 ring-1 ring-accent' 
+                  : 'border-slate-200 hover:border-primary/40'
               }`}
             >
               <h3 className="font-bold text-primary">Employer</h3>
@@ -107,7 +107,7 @@ export default function RegisterPage() {
           <div>
             <label className="text-sm font-semibold" htmlFor="firstName">First Name</label>
             <input
-              className="mt-1 w-full rounded-md px-4 py-2 bg-inherit border text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+              className="mt-1 w-full rounded-md px-4 py-2 bg-white border text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
               name="firstName"
               type="text"
               required
@@ -116,7 +116,7 @@ export default function RegisterPage() {
           <div>
             <label className="text-sm font-semibold" htmlFor="lastName">Last Name</label>
             <input
-              className="mt-1 w-full rounded-md px-4 py-2 bg-inherit border text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+              className="mt-1 w-full rounded-md px-4 py-2 bg-white border text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
               name="lastName"
               type="text"
               required
@@ -127,7 +127,7 @@ export default function RegisterPage() {
         <div className="mb-4">
           <label className="text-sm font-semibold" htmlFor="email">Email</label>
           <input
-            className="mt-1 w-full rounded-md px-4 py-2 bg-inherit border text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            className="mt-1 w-full rounded-md px-4 py-2 bg-white border text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
             name="email"
             type="email"
             placeholder="you@example.com"
@@ -138,7 +138,7 @@ export default function RegisterPage() {
         <div className="mb-6">
           <label className="text-sm font-semibold" htmlFor="password">Password</label>
           <input
-            className="mt-1 w-full rounded-md px-4 py-2 bg-inherit border text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            className="mt-1 w-full rounded-md px-4 py-2 bg-white border text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
             type="password"
             name="password"
             placeholder="••••••••"
@@ -156,7 +156,7 @@ export default function RegisterPage() {
 
         <button 
           disabled={loading}
-          className="bg-primary hover:bg-primary-light disabled:bg-slate-400 text-white rounded-md px-4 py-3 font-medium w-full transition-colors flex justify-center items-center"
+          className="bg-action hover:bg-action-light disabled:bg-slate-400 text-white rounded-md px-4 py-3 font-semibold w-full transition-colors flex justify-center items-center"
         >
           {loading ? (
              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

@@ -62,8 +62,8 @@ export default async function AdminDashboard() {
     <div className="max-w-7xl w-full mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-primary mb-1">Admin Dashboard</h1>
-          <p className="text-slate-500 text-sm">Platform statistics and content moderation.</p>
+          <h1 className="text-3xl font-bold text-primary mb-1">Admin Dashboard</h1>
+          <p className="text-slate-600 text-sm">Platform statistics and content moderation.</p>
         </div>
       </div>
 
@@ -77,11 +77,11 @@ export default async function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Recent Users Table */}
         <div>
-          <h2 className="text-xl font-bold text-slate-800 mb-4">Recent Users</h2>
-          <div className="bg-white border rounded-lg overflow-x-auto shadow-sm">
+          <h2 className="text-xl font-bold text-[#333333] mb-4">Recent Users</h2>
+          <div className="surface-card overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b text-sm text-slate-500">
+                <tr className="bg-slate-50 border-b text-sm text-slate-700">
                   <th className="p-3 font-semibold">User</th>
                   <th className="p-3 font-semibold">Role</th>
                   <th className="p-3 font-semibold">Joined</th>
@@ -92,14 +92,14 @@ export default async function AdminDashboard() {
                   <tr key={u.id} className="border-b last:border-0 hover:bg-slate-50/50">
                     <td className="p-3">
                       <div className="font-medium text-slate-900">{u.first_name || u.last_name ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : 'Unknown'}</div>
-                      <div className="text-xs text-slate-500">{u.email}</div>
+                      <div className="text-xs text-slate-600">{u.email}</div>
                     </td>
                     <td className="p-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase tracking-wider ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : u.role === 'employer' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                         {u.role.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="p-3 text-slate-500 whitespace-nowrap">{new Date(u.created_at).toLocaleDateString()}</td>
+                    <td className="p-3 text-slate-600 whitespace-nowrap">{new Date(u.created_at).toLocaleDateString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -109,11 +109,11 @@ export default async function AdminDashboard() {
 
         {/* Recent Jobs Table */}
         <div>
-          <h2 className="text-xl font-bold text-slate-800 mb-4">Job Moderation</h2>
-          <div className="bg-white border rounded-lg overflow-x-auto shadow-sm">
+          <h2 className="text-xl font-bold text-[#333333] mb-4">Job Moderation</h2>
+          <div className="surface-card overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b text-sm text-slate-500">
+                <tr className="bg-slate-50 border-b text-sm text-slate-700">
                   <th className="p-3 font-semibold">Job Listing</th>
                   <th className="p-3 font-semibold">Status</th>
                   <th className="p-3 font-semibold">Actions</th>
@@ -125,8 +125,8 @@ export default async function AdminDashboard() {
                   return (
                   <tr key={j.id} className="border-b last:border-0 hover:bg-slate-50/50">
                     <td className="p-3">
-                      <Link href={`/jobs/${j.id}`} className="font-medium text-primary hover:underline">{j.title}</Link>
-                      <div className="text-xs text-slate-500 mt-1">{companyName || 'Unknown Company'}</div>
+                      <Link href={`/jobs/${j.id}`} className="font-semibold text-primary hover:text-action transition-colors">{j.title}</Link>
+                      <div className="text-xs text-slate-600 mt-1">{companyName || 'Unknown Company'}</div>
                     </td>
                     <td className="p-3"><StatusBadge status={j.status} /></td>
                     <td className="p-3">

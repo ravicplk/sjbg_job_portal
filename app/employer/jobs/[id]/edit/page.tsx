@@ -84,7 +84,7 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
       
       <h1 className="text-3xl font-serif font-bold text-primary mb-8">Edit Job: {job.title}</h1>
       
-      <div className="bg-white border rounded-lg p-6 sm:p-8 shadow-sm">
+      <div className="surface-card p-6 sm:p-8">
         <form action={updateJob} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
@@ -163,7 +163,7 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
                  Save as Draft
                </button>
              )}
-             <button type="submit" name="action" value="publish" className="flex-1 px-6 py-3 bg-primary text-white font-medium rounded-md hover:bg-primary-light transition-colors shadow-sm text-center">
+             <button type="submit" name="action" value="publish" className="flex-1 px-6 py-3 bg-action text-white font-semibold rounded-md hover:bg-action-light transition-colors shadow-sm text-center">
                {job.status === 'active' ? 'Update Job Details' : 'Publish Job'}
              </button>
           </div>
