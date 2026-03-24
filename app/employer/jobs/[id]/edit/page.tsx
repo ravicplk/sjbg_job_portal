@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { jobEditSchema } from '@/utils/validation/forms'
+import ConfirmSubmitButton from '@/components/ui/ConfirmSubmitButton'
 
 export default async function EditJobPage(props: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const params = await props.params;
@@ -85,9 +86,11 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
           Back to Dashboard
         </Link>
         <form action={deleteJob}>
-          <button type="submit" className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors" onClick={(e) => { if (!confirm('Are you sure you want to delete this job listing? This action cannot be undone.')) e.preventDefault() }}>
-            Delete Listing
-          </button>
+          <ConfirmSubmitButton
+            label="Delete Listing"
+            className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors"
+            confirmMessage="Are you sure you want to delete this job listing? This action cannot be undone."
+          />
         </form>
       </div>
       
@@ -167,19 +170,26 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
             </div>
           </div>
           
-          <div className="flex gap-4 pt-6 border-t border-slate-100 flex-col sm:flex-row mt-4">
-             {job.status === 'active' ? (
-               <button type="submit" name="action" value="closed" className="flex-1 px-6 py-3 bg-red-50 text-red-700 border border-red-200 font-medium rounded-md hover:bg-red-100 transition-colors shadow-sm text-center">
-                 Close Job
-               </button>
-             ) : (
-               <button type="submit" name="action" value="draft" className="flex-1 px-6 py-3 bg-white border border-slate-300 text-slate-700 font-medium rounded-md hover:bg-slate-50 transition-colors shadow-sm text-center">
-                 Save as Draft
-               </button>
-             )}
-             <button type="submit" name="action" value="publish" className="flex-1 px-6 py-3 bg-action text-white font-semibold rounded-md hover:bg-action-light transition-colors shadow-sm text-center">
-               {job.status === 'active' ? 'Update Job Details' : 'Publish Job'}
-             </button>
+          <div className="pt-6 border-t border-slate-100 mt-4 space-y-3">
+            <div className="flex gap-4 flex-col sm:flex-row">
+              <button type="submit" name="action" value="draft" className="flex-1 px-6 py-3 bg-white border border-slate-300 text-slate-700 font-medium rounded-md hover:bg-slate-50 transition-colors shadow-sm text-center">
+                Save as Draft
+              </button>
+              <button
+                type="submit"
+                name="action"
+                value="publish"
+                className="flex-1 px-6 py-3 text-white font-semibold rounded-md transition-colors shadow-sm text-center hover:brightness-110"
+                style={{ backgroundColor: '#520120' }}
+              >
+                {job.status === 'active' ? 'Update & Keep Posted' : 'Post Job'}
+              </button>
+            </div>
+            {job.status === 'active' && (
+              <button type="submit" name="action" value="closed" className="w-full px-6 py-3 bg-red-50 text-red-700 border border-red-200 font-medium rounded-md hover:bg-red-100 transition-colors shadow-sm text-center">
+                Close Job
+              </button>
+            )}
           </div>
         </form>
       </div>

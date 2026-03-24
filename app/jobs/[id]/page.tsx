@@ -1,13 +1,16 @@
 import { createClient } from '@/utils/supabase/server'
 import { formatRelativeTime } from '@/components/ui/JobCard'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
-import ApplyModal from '@/components/ui/ApplyModal'
+import { notFound, redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { applicationSchema } from '@/utils/validation/forms'
+import { applicationSchema, isValidResumeFile } from '@/utils/validation/forms'
 
-export default async function JobDetailPage(props: { params: Promise<{ id: string }> }) {
+export default async function JobDetailPage(props: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ applyError?: string }>
+}) {
   const params = await props.params;
+  const searchParams = await props.searchParams;
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -36,30 +39,78 @@ export default async function JobDetailPage(props: { params: Promise<{ id: strin
     'use server'
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: 'Not authenticated' }
+    if (!user) redirect(`/jobs/${jobId}?applyError=${encodeURIComponent('Please sign in to apply.')}#apply-section`)
     
     const { data: profile } = await supabase.from('seeker_profiles').select('*').eq('user_id', user.id).single()
-    if (!profile) return { error: 'Profile not found' }
-    if (!profile.resume_url) return { error: 'You must fully upload a resume to your profile before applying. Visit your Seeker Dashboard.' }
+    if (!profile) redirect(`/jobs/${jobId}?applyError=${encodeURIComponent('Seeker profile not found. Please complete your profile first.')}#apply-section`)
+
+    const { data: existingApplication } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('job_id', jobId)
+      .eq('seeker_id', profile.id)
+      .maybeSingle()
+    if (existingApplication) {
+      redirect(`/jobs/${jobId}?applyError=${encodeURIComponent('You have already applied for this job.')}#apply-section`)
+    }
 
     const parsed = applicationSchema.safeParse({
+      full_name: formData.get('full_name'),
+      telephone: formData.get('telephone'),
+      qualification: formData.get('qualification'),
       cover_note: formData.get('cover_note'),
     })
-    if (!parsed.success) return { error: parsed.error.issues[0]?.message || 'Invalid application data' }
-    const { cover_note } = parsed.data
+    if (!parsed.success) redirect(`/jobs/${jobId}?applyError=${encodeURIComponent(parsed.error.issues[0]?.message || 'Invalid application data')}#apply-section`)
+    const { full_name, telephone, qualification, cover_note } = parsed.data
+
+    const cvFile = formData.get('cv_file') as File
+    let resumePath: string | null = profile.resume_url || null
+    if (cvFile && cvFile.size > 0) {
+      if (!isValidResumeFile(cvFile)) {
+        redirect(`/jobs/${jobId}?applyError=${encodeURIComponent('CV must be PDF/DOC/DOCX and less than 5MB')}#apply-section`)
+      }
+
+      const fileExt = cvFile.name.split('.').pop()
+      const fileName = `${user.id}-application-cv-${Date.now()}.${fileExt}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('resumes')
+        .upload(fileName, cvFile, { upsert: true })
+
+      if (uploadError || !uploadData) redirect(`/jobs/${jobId}?applyError=${encodeURIComponent(uploadError?.message || 'Could not upload CV')}#apply-section`)
+      resumePath = uploadData.path
+
+      // Keep profile resume updated to the latest uploaded CV for easier future applications.
+      await supabase.from('seeker_profiles').update({ resume_url: resumePath }).eq('user_id', user.id)
+    }
+
+    if (!resumePath) {
+      redirect(`/jobs/${jobId}?applyError=${encodeURIComponent('Please upload your CV or add a resume in your profile before applying.')}#apply-section`)
+    }
+
+    const mergedNote = [
+      `Applicant Name: ${full_name}`,
+      `Telephone: ${telephone}`,
+      qualification ? `Qualification: ${qualification}` : '',
+      cover_note || '',
+    ]
+      .filter(Boolean)
+      .join('\n\n')
     
     const { error } = await supabase.from('applications').insert({
       job_id: jobId,
       seeker_id: profile.id,
-      cover_note: cover_note || null,
+      cover_note: mergedNote || null,
       status: 'pending'
     })
 
-    if (error) return { error: error.message }
+    if (error) redirect(`/jobs/${jobId}?applyError=${encodeURIComponent(error.message)}#apply-section`)
     
     revalidatePath('/')
     revalidatePath(`/jobs/${jobId}`)
-    return {}
+    revalidatePath('/dashboard')
+    revalidatePath('/employer/dashboard')
+    revalidatePath(`/employer/jobs/${jobId}/applications`)
+    redirect('/dashboard?applied=1')
   }
 
   if (error || !job) {
@@ -132,7 +183,9 @@ export default async function JobDetailPage(props: { params: Promise<{ id: strin
                     Applied
                   </div>
                 ) : user ? (
-                  <ApplyModal jobId={job.id} jobTitle={job.title} submitApplication={submitApplication} />
+                  <Link href="#apply-section" className="block w-full text-center md:w-auto px-8 py-3 bg-action text-white font-semibold rounded-md hover:bg-action-light transition-colors shadow-sm">
+                    Apply Now
+                  </Link>
                 ) : (
                   <Link href="/login" className="block w-full text-center md:w-auto px-8 py-3 bg-action text-white font-semibold rounded-md hover:bg-action-light transition-colors shadow-sm">
                     Sign in to Apply
@@ -221,7 +274,9 @@ export default async function JobDetailPage(props: { params: Promise<{ id: strin
                           Applied
                         </div>
                       ) : user ? (
-                        <ApplyModal jobId={job.id} jobTitle={job.title} submitApplication={submitApplication} />
+                        <Link href="#apply-section" className="block w-full bg-action hover:bg-action-light text-white py-3 rounded-md font-semibold text-center transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
+                          Apply Now
+                        </Link>
                       ) : (
                         <Link href="/login" className="block w-full bg-action hover:bg-action-light text-white py-3 rounded-md font-semibold text-center transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
                           Sign in to Apply
@@ -255,6 +310,108 @@ export default async function JobDetailPage(props: { params: Promise<{ id: strin
         </aside>
 
       </div>
+
+      {job.status === 'active' && (
+        <section id="apply-section" className="w-full max-w-5xl mx-auto px-4 pb-14">
+          <div className="surface-card p-6 sm:p-8">
+            <h2 className="text-2xl font-bold text-primary mb-2">Apply for this role</h2>
+            <p className="text-sm text-slate-700 mb-6">Enter your qualification and upload your CV to complete your application.</p>
+
+            {!user ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-sm text-slate-700">Please sign in as a job seeker to apply.</p>
+                <Link href="/login" className="bg-action text-white hover:bg-action-light px-4 py-2 rounded-md text-sm font-semibold text-center transition-colors">
+                  Sign in to Apply
+                </Link>
+              </div>
+            ) : role !== 'job_seeker' ? (
+              <div className="bg-slate-100 text-slate-700 px-4 py-3 rounded-md font-semibold">
+                Only job seekers can apply to jobs.
+              </div>
+            ) : hasApplied ? (
+              <div className="bg-green-100 text-green-800 px-4 py-3 rounded-md font-semibold">
+                You have already applied for this job.
+              </div>
+            ) : (
+              <form action={submitApplication.bind(null, job.id)} className="space-y-5">
+                {searchParams?.applyError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                    {searchParams.applyError}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">
+                    Full Name <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="full_name"
+                    required
+                    className="w-full px-4 py-2 border rounded-md focus:ring-accent focus:border-accent outline-none text-slate-800"
+                    placeholder="Your full name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">
+                    Telephone <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="telephone"
+                    required
+                    className="w-full px-4 py-2 border rounded-md focus:ring-accent focus:border-accent outline-none text-slate-800"
+                    placeholder="+94 77 123 4567"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">
+                    Qualification <span className="text-slate-500 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="qualification"
+                    className="w-full px-4 py-2 border rounded-md focus:ring-accent focus:border-accent outline-none text-slate-800"
+                    placeholder="e.g. BSc in Computer Science"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">
+                    Upload CV <span className="text-slate-500 font-normal">(PDF/DOC/DOCX, max 5MB)</span>
+                  </label>
+                  <input
+                    type="file"
+                    name="cv_file"
+                    accept=".pdf,.doc,.docx"
+                    className="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-action file:text-white hover:file:bg-action-light"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">
+                    Cover Note <span className="text-slate-500 font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    name="cover_note"
+                    rows={5}
+                    className="w-full px-4 py-2 border rounded-md focus:ring-accent focus:border-accent outline-none resize-y text-slate-800"
+                    placeholder="Introduce yourself briefly..."
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto bg-[#102A4C] text-white hover:brightness-110 px-6 py-3 rounded-md font-semibold transition-colors shadow-sm"
+                >
+                  Submit Application
+                </button>
+              </form>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

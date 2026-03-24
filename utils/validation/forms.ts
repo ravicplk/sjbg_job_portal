@@ -88,6 +88,20 @@ export const jobEditSchema = jobCreateSchema.extend({
 })
 
 export const applicationSchema = z.object({
+  full_name: z.string().trim().min(2, 'Full name is required').max(120, 'Full name must be 120 characters or less'),
+  telephone: z
+    .string()
+    .trim()
+    .min(7, 'Telephone number is required')
+    .max(20, 'Telephone number must be 20 characters or less')
+    .refine((v) => phoneRegex.test(v), 'Telephone number format is invalid'),
+  qualification: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(''))
+    .refine((v) => !v || v.length <= 120, 'Qualification must be 120 characters or less')
+    .transform((v) => (v ? v : '')),
   cover_note: z
     .string()
     .trim()
