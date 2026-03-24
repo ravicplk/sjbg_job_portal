@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ApplicationStatusSelect from '@/components/ui/ApplicationStatusSelect'
 import { formatRelativeTime } from '@/components/ui/JobCard'
+import { revalidatePath } from 'next/cache'
 
 export default async function JobApplicationsPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -53,7 +54,25 @@ export default async function JobApplicationsPage(props: { params: Promise<{ id:
   const updateStatus = async (appId: string, newStatus: string) => {
     'use server'
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: app } = await supabase
+      .from('applications')
+      .select('id, job_id, jobs!inner(id, employer_id, employer_profiles!inner(user_id))')
+      .eq('id', appId)
+      .maybeSingle() as any
+
+    const appEmployerUserId =
+      app?.jobs && Array.isArray(app.jobs.employer_profiles)
+        ? app.jobs.employer_profiles[0]?.user_id
+        : app?.jobs?.employer_profiles?.user_id
+
+    if (!app || appEmployerUserId !== user.id) return
+
     await supabase.from('applications').update({ status: newStatus }).eq('id', appId)
+    revalidatePath('/employer/dashboard')
+    revalidatePath(`/employer/jobs/${params.id}/applications`)
   }
 
   return (
@@ -97,14 +116,23 @@ export default async function JobApplicationsPage(props: { params: Promise<{ id:
                   const seeker = app._seeker || {}
                   const user = Array.isArray(seeker?.users) ? seeker?.users[0] : seeker?.users
                   const name = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Unknown'
+                  const note = String(app.cover_note || '')
+                  const submittedName = note.match(/Applicant Name:\s*(.*)/i)?.[1]?.trim()
+                  const submittedPhone = note.match(/Telephone:\s*(.*)/i)?.[1]?.trim()
+                  const submittedQualification = note.match(/Qualification:\s*(.*)/i)?.[1]?.trim()
+                  const submittedMessage = note
+                    .replace(/Applicant Name:\s*.*/i, '')
+                    .replace(/Telephone:\s*.*/i, '')
+                    .replace(/Qualification:\s*.*/i, '')
+                    .trim()
                   
                   return (
                     <tr key={app.id} className="border-b last:border-0 hover:bg-slate-50/50">
                       <td className="p-4">
-                        <div className="font-medium text-slate-900">{name}</div>
+                        <div className="font-medium text-slate-900">{submittedName || name}</div>
                         <div className="text-xs text-slate-600 truncate max-w-[200px]">{seeker?.headline || 'No headline'}</div>
                         <div className="text-xs text-primary mt-1">{user?.email}</div>
-                        <div className="text-xs text-slate-600 mt-1">{seeker?.phone}</div>
+                        <div className="text-xs text-slate-600 mt-1">{submittedPhone || seeker?.phone || 'No phone'}</div>
                       </td>
                       <td className="p-4 text-sm text-slate-700">
                         {seeker?.location || 'Not specified'}
@@ -113,6 +141,11 @@ export default async function JobApplicationsPage(props: { params: Promise<{ id:
                         {formatRelativeTime(app.applied_at)}
                       </td>
                       <td className="p-4 text-sm">
+                        <div className="mb-3 p-2 rounded-md bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1">
+                          <div><span className="font-semibold">Name:</span> {submittedName || name}</div>
+                          <div><span className="font-semibold">Telephone:</span> {submittedPhone || seeker?.phone || 'Not provided'}</div>
+                          <div><span className="font-semibold">Qualification:</span> {submittedQualification || 'Not provided'}</div>
+                        </div>
                         <div className="mb-2">
                           {app.resumeSignedUrl ? (
                             <a href={app.resumeSignedUrl} target="_blank" rel="noopener noreferrer" className="text-action hover:text-primary font-semibold inline-flex items-center transition-colors">
@@ -123,10 +156,10 @@ export default async function JobApplicationsPage(props: { params: Promise<{ id:
                             <span className="text-slate-500">No Resume</span>
                           )}
                         </div>
-                        {app.cover_note && (
+                        {submittedMessage && (
                           <details className="text-xs text-slate-700 bg-slate-50 p-2 rounded border cursor-pointer">
-                            <summary className="font-medium outline-none">View Cover Note</summary>
-                            <p className="mt-2 text-slate-700 whitespace-pre-wrap">{app.cover_note}</p>
+                            <summary className="font-medium outline-none">View Applicant Note</summary>
+                            <p className="mt-2 text-slate-700 whitespace-pre-wrap">{submittedMessage}</p>
                           </details>
                         )}
                       </td>

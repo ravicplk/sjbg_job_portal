@@ -150,8 +150,14 @@ export default async function NewJobPage(props: { searchParams: Promise<{ error?
              <button type="submit" name="action" value="draft" className="flex-1 px-6 py-3 bg-white border border-slate-300 text-slate-700 font-medium rounded-md hover:bg-slate-50 transition-colors shadow-sm text-center">
                Save as Draft
              </button>
-             <button type="submit" name="action" value="publish" className="flex-1 px-6 py-3 bg-action text-white font-semibold rounded-md hover:bg-action-light transition-colors shadow-sm text-center">
-               Publish Job
+             <button
+               type="submit"
+               name="action"
+               value="publish"
+               className="flex-1 px-6 py-3 text-white font-semibold rounded-md transition-colors shadow-sm text-center hover:brightness-110"
+               style={{ backgroundColor: '#520120' }}
+             >
+               Post Job
              </button>
           </div>
         </form>

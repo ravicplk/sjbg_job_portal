@@ -5,6 +5,25 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Linkedin, 
+  Briefcase, 
+  GraduationCap, 
+  Code2, 
+  Camera, 
+  Plus, 
+  Trash2, 
+  Download, 
+  Save, 
+  Sparkles,
+  Eye,
+  ChevronRight,
+  X
+} from 'lucide-react'
 
 export default function ResumeBuilder({ userProfile }: { userProfile: any }) {
   const router = useRouter()
@@ -13,6 +32,7 @@ export default function ResumeBuilder({ userProfile }: { userProfile: any }) {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [activeSection, setActiveSection] = useState('personal')
 
   const [personal, setPersonal] = useState({
     fullName: userProfile?.users ? `${userProfile.users.first_name || ''} ${userProfile.users.last_name || ''}`.trim() : '',
@@ -33,6 +53,7 @@ export default function ResumeBuilder({ userProfile }: { userProfile: any }) {
   ])
 
   const [skills, setSkills] = useState('')
+  const [photoPreview, setPhotoPreview] = useState<string>('')
 
   const handlePersonalChange = (e: any) => {
     setPersonal({ ...personal, [e.target.name]: e.target.value })
@@ -52,6 +73,31 @@ export default function ResumeBuilder({ userProfile }: { userProfile: any }) {
   const addEducation = () => setEducation([...education, { id: Date.now(), school: '', degree: '', year: '' }])
   const removeEducation = (id: number) => setEducation(education.filter(edu => edu.id !== id))
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) {
+      setPhotoPreview('')
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload a valid image file for the profile photo.')
+      return
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      setError('Photo must be smaller than 3MB.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setPhotoPreview(String(reader.result || ''))
+      setError(null)
+    }
+    reader.readAsDataURL(file)
+  }
+
   const generatePDF = async (saveToProfile: boolean = false) => {
     if (!previewRef.current) return
 
@@ -60,7 +106,6 @@ export default function ResumeBuilder({ userProfile }: { userProfile: any }) {
     setSuccess(false)
 
     try {
-      // Hide UI buttons in preview during render if needed
       const canvas = await html2canvas(previewRef.current, { scale: 2, useCORS: true })
       const imgData = canvas.toDataURL('image/png')
       
@@ -106,155 +151,382 @@ export default function ResumeBuilder({ userProfile }: { userProfile: any }) {
     setLoading(false)
   }
 
+  const experienceForPreview = experience.filter(
+    (exp) => exp.company.trim() || exp.role.trim() || exp.description.trim()
+  )
+  const educationForPreview = education.filter(
+    (edu) => edu.school.trim() || edu.degree.trim() || edu.year.trim()
+  )
+  const skillsForPreview = skills
+    .split(',')
+    .map((skill) => skill.trim())
+    .filter(Boolean)
+
+  const sections = [
+    { id: 'personal', label: 'Personal Info', icon: User },
+    { id: 'experience', label: 'Experience', icon: Briefcase },
+    { id: 'education', label: 'Education', icon: GraduationCap },
+    { id: 'skills', label: 'Skills', icon: Code2 },
+  ]
+  const brandBlue = '#102A4C'
+
+  const inputClassName = 'w-full rounded-xl border border-gray-200 bg-white/50 px-4 py-2.5 text-sm text-gray-800 outline-none transition-all focus:border-[#102A4C] focus:bg-white focus:ring-2 focus:ring-[#102A4C]/20 backdrop-blur-sm'
+  const textareaClassName = 'w-full rounded-xl border border-gray-200 bg-white/50 px-4 py-2.5 text-sm text-gray-800 outline-none transition-all focus:border-[#102A4C] focus:bg-white focus:ring-2 focus:ring-[#102A4C]/20 resize-y backdrop-blur-sm'
+
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
-      
-      {/* LEFT: Builder Form */}
-      <div className="w-full lg:w-1/2 space-y-8 h-[calc(100vh-120px)] overflow-y-auto pr-2 pb-10">
-        
-        {/* Personal Info */}
-        <div className="bg-white p-6 border rounded-lg shadow-sm">
-          <h2 className="text-xl font-bold text-slate-800 mb-4">Personal Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="fullName" value={personal.fullName} onChange={handlePersonalChange} placeholder="Full Name *" className="border p-2 rounded w-full" />
-            <input name="headline" value={personal.headline} onChange={handlePersonalChange} placeholder="Professional Headline" className="border p-2 rounded w-full" />
-            <input name="email" value={personal.email} onChange={handlePersonalChange} placeholder="Email *" className="border p-2 rounded w-full" />
-            <input name="phone" value={personal.phone} onChange={handlePersonalChange} placeholder="Phone Number" className="border p-2 rounded w-full" />
-            <input name="location" value={personal.location} onChange={handlePersonalChange} placeholder="Location (City, State)" className="border p-2 rounded w-full" />
-            <input name="linkedin" value={personal.linkedin} onChange={handlePersonalChange} placeholder="LinkedIn URL" className="border p-2 rounded w-full" />
-            <textarea name="summary" value={personal.summary} onChange={handlePersonalChange} placeholder="Professional Summary" rows={3} className="border p-2 rounded w-full md:col-span-2 resize-y" />
-          </div>
-        </div>
-
-        {/* Experience */}
-        <div className="bg-white p-6 border rounded-lg shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-slate-800">Experience</h2>
-            <button onClick={addExperience} className="text-sm bg-slate-100 px-3 py-1 rounded text-primary hover:bg-slate-200">+ Add</button>
-          </div>
-          <div className="space-y-6">
-            {experience.map((exp, index) => (
-              <div key={exp.id} className="relative border border-slate-100 p-4 rounded bg-slate-50">
-                {experience.length > 1 && (
-                  <button onClick={() => removeExperience(exp.id)} className="absolute top-2 right-2 text-slate-400 hover:text-red-500 text-sm">✕</button>
-                )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                  <input value={exp.company} onChange={(e) => handleExpChange(exp.id, 'company', e.target.value)} placeholder="Company Name" className="border p-2 rounded w-full bg-white" />
-                  <input value={exp.role} onChange={(e) => handleExpChange(exp.id, 'role', e.target.value)} placeholder="Job Title" className="border p-2 rounded w-full bg-white" />
-                  <input value={exp.startDate} onChange={(e) => handleExpChange(exp.id, 'startDate', e.target.value)} placeholder="Start Date (e.g. Jan 2020)" className="border p-2 rounded w-full bg-white text-sm" />
-                  <input value={exp.endDate} onChange={(e) => handleExpChange(exp.id, 'endDate', e.target.value)} placeholder="End Date (e.g. Present)" className="border p-2 rounded w-full bg-white text-sm" />
-                </div>
-                <textarea value={exp.description} onChange={(e) => handleExpChange(exp.id, 'description', e.target.value)} placeholder="Describe your responsibilities and achievements..." rows={3} className="border p-2 rounded w-full bg-white resize-y" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Education */}
-        <div className="bg-white p-6 border rounded-lg shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-slate-800">Education</h2>
-            <button onClick={addEducation} className="text-sm bg-slate-100 px-3 py-1 rounded text-primary hover:bg-slate-200">+ Add</button>
-          </div>
-          <div className="space-y-4">
-            {education.map((edu) => (
-              <div key={edu.id} className="relative grid grid-cols-1 md:grid-cols-3 gap-3">
-                {education.length > 1 && (
-                  <button onClick={() => removeEducation(edu.id)} className="absolute -right-2 -top-2 text-slate-400 hover:text-red-500 text-sm bg-white rounded-full w-5 h-5 flex items-center justify-center border shadow-sm z-10">✕</button>
-                )}
-                <input value={edu.school} onChange={(e) => handleEduChange(edu.id, 'school', e.target.value)} placeholder="School/University" className="border p-2 rounded w-full" />
-                <input value={edu.degree} onChange={(e) => handleEduChange(edu.id, 'degree', e.target.value)} placeholder="Degree" className="border p-2 rounded w-full" />
-                <input value={edu.year} onChange={(e) => handleEduChange(edu.id, 'year', e.target.value)} placeholder="Graduation Year" className="border p-2 rounded w-full" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Skills */}
-        <div className="bg-white p-6 border rounded-lg shadow-sm">
-          <h2 className="text-xl font-bold text-slate-800 mb-4">Skills</h2>
-          <textarea value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="List your key skills (e.g. React, Next.js, Project Management, SEO)" rows={2} className="border p-2 rounded w-full resize-y" />
-        </div>
-      </div>
-
-      {/* RIGHT: Live Preview & Actions */}
-      <div className="w-full lg:w-1/2 flex flex-col h-[calc(100vh-120px)]">
-        
-        <div className="flex gap-4 mb-4 shrink-0">
-          <button onClick={() => generatePDF(false)} disabled={loading} className="flex-1 bg-white border border-slate-300 text-slate-700 py-3 rounded-md font-medium hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50">
-            Download PDF
-          </button>
-          <button onClick={() => generatePDF(true)} disabled={loading} className="flex-1 bg-action text-white py-3 rounded-md font-semibold hover:bg-action-light transition-colors shadow-sm disabled:opacity-50">
-            {loading ? 'Processing...' : 'Save to Profile'}
-          </button>
-        </div>
-        
-        {error && <div className="p-3 bg-red-100 text-red-700 text-sm rounded mb-4">{error}</div>}
-        {success && <div className="p-3 bg-green-100 text-green-800 text-sm rounded mb-4">Resume saved successfully! Redirecting...</div>}
-
-        <div className="flex-1 overflow-y-auto bg-slate-100 p-4 border rounded-lg shadow-inner flex justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      <div className="max-w-[1600px] mx-auto px-4 py-8 lg:py-12">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
           
-          {/* A4 Document Preview - Inline colors bypass html2canvas Tailwind v4 oklch()/lab() bug */}
-          <div ref={previewRef} className="w-[210mm] min-h-[297mm] h-max shadow-md p-[20mm] box-border" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
+          {/* LEFT: Builder Form */}
+          <div className="xl:col-span-7 space-y-6">
             
-            <header className="border-b-2 pb-4 mb-6" style={{ borderColor: '#1e293b' }}>
-              <h1 className="text-3xl font-serif font-bold uppercase tracking-wider" style={{ color: '#0f172a' }}>{personal.fullName || 'Your Name'}</h1>
-              <p className="text-lg mt-1" style={{ color: '#475569' }}>{personal.headline || 'Professional Headline'}</p>
-              
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs font-medium" style={{ color: '#64748b' }}>
-                {personal.email && <span>{personal.email}</span>}
-                {personal.phone && <span>• {personal.phone}</span>}
-                {personal.location && <span>• {personal.location}</span>}
-                {personal.linkedin && <span>• {personal.linkedin}</span>}
-              </div>
-            </header>
+            {/* Section Navigation */}
+            <div className="flex flex-wrap gap-2 p-2 bg-white rounded-2xl border border-gray-200 shadow-sm">
+              {sections.map((section) => {
+                const Icon = section.icon
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
+                      activeSection === section.id
+                        ? 'text-white shadow-lg'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                    style={activeSection === section.id ? { backgroundColor: brandBlue } : undefined}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {section.label}
+                  </button>
+                )
+              })}
+            </div>
 
-            {personal.summary && (
-              <section className="mb-6">
-                <p className="text-sm leading-relaxed" style={{ color: '#334155' }}>{personal.summary}</p>
-              </section>
-            )}
-
-            <section className="mb-6">
-              <h3 className="text-sm font-bold uppercase tracking-widest border-b pb-1 mb-4" style={{ color: '#1e293b', borderColor: '#e2e8f0' }}>Experience</h3>
-              <div className="space-y-4">
-                {experience.map((exp, i) => (
-                  <div key={i}>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <h4 className="font-bold" style={{ color: '#1e293b' }}>{exp.role || 'Job Title'}</h4>
-                      <span className="text-xs font-medium" style={{ color: '#64748b' }}>{exp.startDate || 'Start'} — {exp.endDate || 'End'}</span>
+            {/* Personal Info Section */}
+            {activeSection === 'personal' && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                  <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-xl">
+                        <User className="w-5 h-5 text-[#102A4C]" />
                     </div>
-                    <div className="text-sm font-medium mb-2" style={{ color: '#475569' }}>{exp.company || 'Company Name'}</div>
-                    {exp.description && (
-                      <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#334155' }}>{exp.description}</p>
-                    )}
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">Personal Details</h2>
+                      <p className="text-sm text-gray-500 mt-0.5">Add your contact information</p>
+                    </div>
                   </div>
-                ))}
+                </div>
+                
+                <div className="p-6 space-y-6">
+                  {/* Photo Upload */}
+                  <div className="rounded-xl bg-gradient-to-r from-gray-50 to-white p-5 border border-gray-100">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+                      <Camera className="w-4 h-4 text-[#102A4C]" />
+                      Profile Photo
+                    </label>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoChange}
+                        className="w-full sm:w-auto text-sm text-gray-600 file:mr-3 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white file:bg-[#102A4C] hover:file:bg-[#0d223d] transition-colors cursor-pointer"
+                      />
+                      {photoPreview && (
+                        <div className="relative">
+                          <img src={photoPreview} alt="Profile preview" className="w-16 h-16 object-cover rounded-xl border-2 border-blue-200 shadow-sm" />
+                          <button
+                            onClick={() => setPhotoPreview('')}
+                            className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">JPG, PNG or WebP (Max 3MB)</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                      <input name="fullName" value={personal.fullName} onChange={handlePersonalChange} placeholder="John Doe" className={inputClassName} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Professional Headline</label>
+                      <input name="headline" value={personal.headline} onChange={handlePersonalChange} placeholder="Senior Software Engineer" className={inputClassName} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input name="email" value={personal.email} onChange={handlePersonalChange} placeholder="john@example.com" className={`${inputClassName} pl-10`} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input name="phone" value={personal.phone} onChange={handlePersonalChange} placeholder="+1 234 567 8900" className={`${inputClassName} pl-10`} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input name="location" value={personal.location} onChange={handlePersonalChange} placeholder="New York, NY" className={`${inputClassName} pl-10`} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn URL</label>
+                      <div className="relative">
+                        <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input name="linkedin" value={personal.linkedin} onChange={handlePersonalChange} placeholder="linkedin.com/in/johndoe" className={`${inputClassName} pl-10`} />
+                      </div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Professional Summary</label>
+                      <textarea name="summary" value={personal.summary} onChange={handlePersonalChange} placeholder="Write a compelling summary of your professional background..." rows={4} className={textareaClassName} />
+                    </div>
+                  </div>
+                </div>
               </div>
-            </section>
-
-            <section className="mb-6">
-               <h3 className="text-sm font-bold uppercase tracking-widest border-b pb-1 mb-4" style={{ color: '#1e293b', borderColor: '#e2e8f0' }}>Education</h3>
-               <div className="space-y-3">
-                 {education.map((edu, i) => (
-                   <div key={i} className="flex justify-between items-baseline">
-                     <div>
-                       <div className="font-bold text-sm" style={{ color: '#1e293b' }}>{edu.degree || 'Degree'}</div>
-                       <div className="text-xs" style={{ color: '#475569' }}>{edu.school || 'School/University'}</div>
-                     </div>
-                     <div className="text-xs font-medium" style={{ color: '#64748b' }}>{edu.year || 'Year'}</div>
-                   </div>
-                 ))}
-               </div>
-            </section>
-
-            {skills && (
-              <section>
-                 <h3 className="text-sm font-bold uppercase tracking-widest border-b pb-1 mb-3" style={{ color: '#1e293b', borderColor: '#e2e8f0' }}>Skills</h3>
-                 <p className="text-xs leading-relaxed" style={{ color: '#334155' }}>{skills}</p>
-              </section>
             )}
 
+            {/* Experience Section */}
+            {activeSection === 'experience' && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-xl">
+                        <Briefcase className="w-5 h-5 text-[#102A4C]" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">Work Experience</h2>
+                        <p className="text-sm text-gray-500 mt-0.5">Add your professional experience</p>
+                      </div>
+                    </div>
+                    <button onClick={addExperience} className="flex items-center gap-2 px-4 py-2 text-white rounded-xl font-semibold transition-all shadow-sm hover:shadow-md hover:brightness-110" style={{ backgroundColor: brandBlue }}>
+                      <Plus className="w-4 h-4" />
+                      Add Role
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="p-6 space-y-6">
+                  {experience.map((exp, index) => (
+                    <div key={exp.id} className="relative rounded-xl border border-gray-200 bg-gray-50/50 p-5 hover:shadow-md transition-shadow">
+                      {experience.length > 1 && (
+                        <button onClick={() => removeExperience(exp.id)} className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-sm">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                          <span className="text-xs font-bold text-[#102A4C]">{index + 1}</span>
+                        </div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Role {index + 1}</p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <input value={exp.company} onChange={(e) => handleExpChange(exp.id, 'company', e.target.value)} placeholder="Company Name" className={inputClassName} />
+                        <input value={exp.role} onChange={(e) => handleExpChange(exp.id, 'role', e.target.value)} placeholder="Job Title" className={inputClassName} />
+                        <input value={exp.startDate} onChange={(e) => handleExpChange(exp.id, 'startDate', e.target.value)} placeholder="Start Date" className={inputClassName} />
+                        <input value={exp.endDate} onChange={(e) => handleExpChange(exp.id, 'endDate', e.target.value)} placeholder="End Date" className={inputClassName} />
+                      </div>
+                      <textarea value={exp.description} onChange={(e) => handleExpChange(exp.id, 'description', e.target.value)} placeholder="Describe your responsibilities and achievements..." rows={3} className={textareaClassName} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Education Section */}
+            {activeSection === 'education' && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-xl">
+                        <GraduationCap className="w-5 h-5 text-[#102A4C]" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">Education</h2>
+                        <p className="text-sm text-gray-500 mt-0.5">Add your educational background</p>
+                      </div>
+                    </div>
+                    <button onClick={addEducation} className="flex items-center gap-2 px-4 py-2 text-white rounded-xl font-semibold transition-all shadow-sm hover:shadow-md hover:brightness-110" style={{ backgroundColor: brandBlue }}>
+                      <Plus className="w-4 h-4" />
+                      Add Education
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                  {education.map((edu, index) => (
+                    <div key={edu.id} className="relative rounded-xl border border-gray-200 bg-gray-50/50 p-5 hover:shadow-md transition-shadow">
+                      {education.length > 1 && (
+                        <button onClick={() => removeEducation(edu.id)} className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-sm">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                          <span className="text-xs font-bold text-[#102A4C]">{index + 1}</span>
+                        </div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Education {index + 1}</p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input value={edu.school} onChange={(e) => handleEduChange(edu.id, 'school', e.target.value)} placeholder="School/University" className={inputClassName} />
+                        <input value={edu.degree} onChange={(e) => handleEduChange(edu.id, 'degree', e.target.value)} placeholder="Degree" className={inputClassName} />
+                        <input value={edu.year} onChange={(e) => handleEduChange(edu.id, 'year', e.target.value)} placeholder="Graduation Year" className={inputClassName} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Skills Section */}
+            {activeSection === 'skills' && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-xl">
+                      <Code2 className="w-5 h-5 text-[#102A4C]" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">Skills & Competencies</h2>
+                      <p className="text-sm text-gray-500 mt-0.5">List your technical and soft skills</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-6">
+                  <textarea value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="React, TypeScript, Node.js, Project Management, Team Leadership, Communication" rows={4} className={textareaClassName} />
+                  <p className="text-xs text-gray-500 mt-2">Separate skills with commas for better formatting</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT: Live Preview & Actions */}
+          <div className="xl:col-span-5 space-y-6">
+            
+            {/* Action Buttons */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+              <div className="flex gap-3">
+                <button onClick={() => generatePDF(false)} disabled={loading} className="flex-1 flex items-center justify-center gap-2 text-white py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg hover:brightness-110 disabled:opacity-50" style={{ backgroundColor: brandBlue }}>
+                  <Download className="w-4 h-4" />
+                  Download PDF
+                </button>
+                <button onClick={() => generatePDF(true)} disabled={loading} className="flex-1 flex items-center justify-center gap-2 text-white py-3 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg hover:brightness-110 disabled:opacity-50" style={{ backgroundColor: brandBlue }}>
+                  <Save className="w-4 h-4" />
+                  {loading ? 'Processing...' : 'Save to Profile'}
+                </button>
+              </div>
+              {error && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl flex items-center gap-2">
+                  <X className="w-4 h-4" />
+                  {error}
+                </div>
+              )}
+              {success && (
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 text-green-800 text-sm rounded-xl flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  Resume saved successfully! Redirecting...
+                </div>
+              )}
+            </div>
+
+            {/* Preview Card */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-[#102A4C]" />
+                  <h3 className="font-semibold text-gray-900">Live Preview</h3>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Your resume updates in real-time as you type</p>
+              </div>
+              <div className="p-4 bg-gray-100 overflow-x-auto">
+                <div ref={previewRef} className="w-[210mm] min-h-[297mm] h-max shadow-2xl p-[18mm] box-border mx-auto bg-white rounded-lg" style={{ backgroundColor: '#ffffff', color: '#1e293b' }}>
+                  <div className="h-1.5 w-full rounded-full mb-4" style={{ backgroundColor: '#102A4C' }} />
+                  
+                  <header className="border-b pb-4 mb-5" style={{ borderColor: '#cbd5e1' }}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h1 className="text-[27px] font-bold tracking-tight" style={{ color: '#0f172a' }}>{personal.fullName || 'Your Name'}</h1>
+                        <p className="text-[13px] mt-1 font-semibold uppercase tracking-wide" style={{ color: '#102A4C' }}>{personal.headline || 'Professional Headline'}</p>
+                        <div className="mt-3 text-[11px] text-gray-500 leading-relaxed">
+                          {[personal.email, personal.phone, personal.location, personal.linkedin].filter(Boolean).join(' • ')}
+                        </div>
+                      </div>
+                      {photoPreview && (
+                        <img src={photoPreview} alt="Candidate" className="w-20 h-20 rounded-full object-cover border-2 border-blue-200 shadow-sm" />
+                      )}
+                    </div>
+                  </header>
+
+                  {personal.summary && (
+                    <section className="mb-6">
+                      <h3 className="text-[12px] font-bold uppercase tracking-wider border-l-[3px] pl-2 mb-3" style={{ color: '#0f172a', borderColor: '#102A4C' }}>
+                        Professional Summary
+                      </h3>
+                      <p className="text-[11px] leading-relaxed text-gray-600 whitespace-pre-wrap bg-slate-50 border border-slate-200 rounded-md p-2.5">{personal.summary}</p>
+                    </section>
+                  )}
+
+                  <section className="mb-6">
+                    <h3 className="text-[12px] font-bold uppercase tracking-wider border-l-[3px] pl-2 mb-4" style={{ color: '#0f172a', borderColor: '#102A4C' }}>Work Experience</h3>
+                    <div className="space-y-4">
+                      {(experienceForPreview.length > 0 ? experienceForPreview : [{ id: 0, company: 'Company Name', role: 'Job Title', startDate: 'Start', endDate: 'End', description: '' }]).map((exp, i) => (
+                        <div key={i} className="pb-3 border-b border-slate-100 last:border-0">
+                          <div className="flex justify-between items-baseline mb-1">
+                            <h4 className="font-bold text-[12px] text-gray-900">{exp.role || 'Job Title'}</h4>
+                            <span className="text-[11px] font-medium text-gray-500">{exp.startDate || 'Start'} - {exp.endDate || 'End'}</span>
+                          </div>
+                          <div className="text-[11px] font-semibold mb-2" style={{ color: '#102A4C' }}>{exp.company || 'Company Name'}</div>
+                          {exp.description && (
+                            <ul className="text-[11px] text-gray-600 leading-relaxed space-y-1">
+                              {exp.description.split('\n').filter(Boolean).map((line, idx) => (
+                                <li key={idx}>• {line.replace(/^[-*]\s*/, '')}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="mb-6">
+                    <h3 className="text-[12px] font-bold uppercase tracking-wider border-l-[3px] pl-2 mb-4" style={{ color: '#0f172a', borderColor: '#102A4C' }}>Education</h3>
+                    <div className="space-y-3">
+                      {(educationForPreview.length > 0 ? educationForPreview : [{ id: 0, school: 'School/University', degree: 'Degree', year: 'Year' }]).map((edu, i) => (
+                        <div key={i} className="flex justify-between items-baseline pb-2 border-b border-slate-100 last:border-0">
+                          <div>
+                            <div className="font-bold text-[12px] text-gray-900">{edu.degree || 'Degree'}</div>
+                            <div className="text-[11px] text-gray-600">{edu.school || 'School/University'}</div>
+                          </div>
+                          <div className="text-[11px] font-medium text-gray-500">{edu.year || 'Year'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {(skillsForPreview.length > 0 || !personal.summary) && (
+                    <section>
+                      <h3 className="text-[12px] font-bold uppercase tracking-wider border-l-[3px] pl-2 mb-3" style={{ color: '#0f172a', borderColor: '#102A4C' }}>Skills</h3>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(skillsForPreview.length > 0 ? skillsForPreview : ['Communication', 'Team collaboration', 'Problem solving']).map((skill, idx) => (
+                          <span key={idx} className="text-[10px] px-2.5 py-1 rounded-full border bg-blue-50 text-slate-700 border-blue-100">{skill}</span>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

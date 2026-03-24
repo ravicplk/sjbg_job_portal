@@ -3,18 +3,23 @@ import Link from 'next/link'
 import StatCard from '@/components/ui/StatCard'
 import StatusBadge from '@/components/ui/StatusBadge'
 import { formatRelativeTime } from '@/components/ui/JobCard'
+import ApplicationStatusSelect from '@/components/ui/ApplicationStatusSelect'
+import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 
 export const dynamic = 'force-dynamic'
 
 export default async function EmployerDashboard() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login?message=Please sign in first')
   
   const { data: profile } = await supabase
     .from('employer_profiles')
     .select('*')
-    .eq('user_id', user!.id)
+    .eq('user_id', user.id)
     .single()
+  if (!profile) redirect('/employer/profile?message=Please complete company profile first')
 
   const { data: jobs } = await supabase
     .from('jobs')
@@ -26,12 +31,72 @@ export default async function EmployerDashboard() {
     .order('created_at', { ascending: false })
 
   const jobsList = jobs || []
+
+  const { data: recentApplications } = await supabase
+    .from('applications')
+    .select(`
+      id,
+      status,
+      applied_at,
+      cover_note,
+      jobs!inner (
+        id,
+        title,
+        employer_id
+      ),
+      seeker_profiles (
+        id,
+        phone,
+        resume_url,
+        users!inner (first_name, last_name, email)
+      )
+    `)
+    .eq('jobs.employer_id', profile?.id)
+    .order('applied_at', { ascending: false })
+    .limit(10)
+
+  const appsReviewListRaw = recentApplications || []
+  const appsReviewList = await Promise.all(
+    appsReviewListRaw.map(async (app: any) => {
+      const seeker = Array.isArray(app.seeker_profiles) ? app.seeker_profiles[0] : app.seeker_profiles
+      let resumeSignedUrl: string | null = null
+      if (seeker?.resume_url) {
+        const { data } = await supabase.storage.from('resumes').createSignedUrl(seeker.resume_url, 3600)
+        resumeSignedUrl = data?.signedUrl || null
+      }
+      return { ...app, _seeker: seeker, resumeSignedUrl }
+    })
+  )
   
   const activeListings = jobsList.filter(j => j.status === 'active').length
   const totalApplications = jobsList.reduce((acc, job) => acc + (job.applications?.length || 0), 0)
   const pendingReview = jobsList.reduce((acc, job) => {
     return acc + (job.applications?.filter((a: any) => a.status === 'pending').length || 0)
   }, 0)
+
+  const updateApplicationStatus = async (appId: string, newStatus: string) => {
+    'use server'
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: app } = await supabase
+      .from('applications')
+      .select('id, job_id, jobs!inner(id, employer_id, employer_profiles!inner(user_id))')
+      .eq('id', appId)
+      .maybeSingle() as any
+
+    const appEmployerUserId =
+      app?.jobs && Array.isArray(app.jobs.employer_profiles)
+        ? app.jobs.employer_profiles[0]?.user_id
+        : app?.jobs?.employer_profiles?.user_id
+
+    if (!app || appEmployerUserId !== user.id) return
+
+    await supabase.from('applications').update({ status: newStatus }).eq('id', appId)
+    revalidatePath('/employer/dashboard')
+    if (app?.job_id) revalidatePath(`/employer/jobs/${app.job_id}/applications`)
+  }
 
   return (
     <div className="max-w-6xl w-full mx-auto px-4 py-8">
@@ -108,6 +173,80 @@ export default async function EmployerDashboard() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <h2 className="text-xl font-bold text-[#333333] mt-10 mb-4">Recent Applications (Review)</h2>
+      <div className="surface-card overflow-hidden">
+        {appsReviewList.length === 0 ? (
+          <div className="p-8 text-center text-slate-600 text-sm">
+            No applications received yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[980px]">
+              <thead>
+                <tr className="bg-slate-50 border-b text-sm text-slate-700">
+                  <th className="p-4 font-semibold">Applicant</th>
+                  <th className="p-4 font-semibold">Applied For</th>
+                  <th className="p-4 font-semibold">Submitted Details</th>
+                  <th className="p-4 font-semibold">CV</th>
+                  <th className="p-4 font-semibold">Applied</th>
+                  <th className="p-4 font-semibold text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {appsReviewList.map((app: any) => {
+                  const seeker = app._seeker || {}
+                  const user = Array.isArray(seeker?.users) ? seeker.users[0] : seeker?.users
+                  const dbName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Unknown'
+                  const note = String(app.cover_note || '')
+                  const submittedName = note.match(/Applicant Name:\s*(.*)/i)?.[1]?.trim()
+                  const submittedPhone = note.match(/Telephone:\s*(.*)/i)?.[1]?.trim()
+                  const submittedQualification = note.match(/Qualification:\s*(.*)/i)?.[1]?.trim()
+                  return (
+                    <tr key={app.id} className="border-b last:border-0 hover:bg-slate-50/50">
+                      <td className="p-4 text-sm">
+                        <div className="font-semibold text-slate-900">{submittedName || dbName}</div>
+                        <div className="text-xs text-slate-600">{user?.email || 'No email'}</div>
+                        <div className="text-xs text-slate-600">{submittedPhone || seeker?.phone || 'No phone'}</div>
+                      </td>
+                      <td className="p-4 text-sm">
+                        <Link href={`/jobs/${app.jobs?.id}`} className="font-semibold text-primary hover:text-action transition-colors">
+                          {app.jobs?.title || 'Job'}
+                        </Link>
+                      </td>
+                      <td className="p-4 text-xs text-slate-700">
+                        <div><span className="font-semibold">Qualification:</span> {submittedQualification || 'Not provided'}</div>
+                      </td>
+                      <td className="p-4 text-sm">
+                        {app.resumeSignedUrl ? (
+                          <a href={app.resumeSignedUrl} target="_blank" rel="noopener noreferrer" className="text-action hover:text-primary font-semibold transition-colors">
+                            View CV
+                          </a>
+                        ) : (
+                          <span className="text-slate-500">No CV</span>
+                        )}
+                      </td>
+                      <td className="p-4 text-sm text-slate-600">
+                        {formatRelativeTime(app.applied_at)}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="inline-flex flex-col items-end gap-2">
+                          <StatusBadge status={app.status} />
+                          <ApplicationStatusSelect
+                            applicationId={app.id}
+                            currentStatus={app.status}
+                            updateAction={updateApplicationStatus}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

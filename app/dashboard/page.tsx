@@ -3,18 +3,22 @@ import Link from 'next/link'
 import StatCard from '@/components/ui/StatCard'
 import StatusBadge from '@/components/ui/StatusBadge'
 import { formatRelativeTime } from '@/components/ui/JobCard'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
-export default async function SeekerDashboard() {
+export default async function SeekerDashboard(props: { searchParams: Promise<{ applied?: string }> }) {
+  const searchParams = await props.searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login?message=Please sign in first')
   
   const { data: profile } = await supabase
     .from('seeker_profiles')
     .select('*, users(first_name, last_name)')
-    .eq('user_id', user!.id)
+    .eq('user_id', user.id)
     .single()
+  if (!profile) redirect('/profile?message=Please complete your profile first')
 
   const { data: applications } = await supabase
     .from('applications')
@@ -22,6 +26,7 @@ export default async function SeekerDashboard() {
       id,
       status,
       applied_at,
+      cover_note,
       jobs (
         id,
         title,
@@ -37,6 +42,7 @@ export default async function SeekerDashboard() {
   const appsSent = appsList.length
   const interviews = appsList.filter((a: any) => a.status === 'shortlisted').length
   const hired = appsList.filter((a: any) => a.status === 'hired').length
+  const showAppliedSuccess = searchParams?.applied === '1'
 
   const userMeta = profile?.users as any;
   const firstName = userMeta?.first_name || 'Seeker'
@@ -62,6 +68,12 @@ export default async function SeekerDashboard() {
         </Link>
       </div>
 
+      {showAppliedSuccess && (
+        <div className="mb-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-green-800 text-sm font-medium">
+          Application submitted successfully. You can track it below.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         <StatCard label="Applications Sent" value={appsSent} />
         <StatCard label="Shortlisted / Interviews" value={interviews} />
@@ -86,6 +98,7 @@ export default async function SeekerDashboard() {
                 <tr className="bg-slate-50 border-b text-sm text-slate-700">
                   <th className="p-4 font-semibold">Job Title</th>
                   <th className="p-4 font-semibold">Company</th>
+                  <th className="p-4 font-semibold">Application Details</th>
                   <th className="p-4 font-semibold">Applied On</th>
                   <th className="p-4 font-semibold text-right">Status</th>
                 </tr>
@@ -94,6 +107,15 @@ export default async function SeekerDashboard() {
                 {appsList.map((app: any) => {
                   const job = app.jobs
                   const companyName = job?.employer_profiles?.company_name || 'Unknown Company'
+                  const note = String(app.cover_note || '')
+                  const applicantName = note.match(/Applicant Name:\s*(.*)/i)?.[1]?.trim()
+                  const applicantPhone = note.match(/Telephone:\s*(.*)/i)?.[1]?.trim()
+                  const applicantQualification = note.match(/Qualification:\s*(.*)/i)?.[1]?.trim()
+                  const cleanedNote = note
+                    .replace(/Applicant Name:\s*.*/i, '')
+                    .replace(/Telephone:\s*.*/i, '')
+                    .replace(/Qualification:\s*.*/i, '')
+                    .trim()
                   return (
                     <tr key={app.id} className="border-b last:border-0 hover:bg-slate-50/50">
                       <td className="p-4">
@@ -102,6 +124,14 @@ export default async function SeekerDashboard() {
                       </td>
                       <td className="p-4 text-slate-700 text-sm font-medium">
                         {companyName}
+                      </td>
+                      <td className="p-4 text-xs text-slate-700">
+                        <div className="space-y-1 max-w-xs">
+                          {applicantName && <div><span className="font-semibold">Name:</span> {applicantName}</div>}
+                          {applicantPhone && <div><span className="font-semibold">Tel:</span> {applicantPhone}</div>}
+                          {applicantQualification && <div><span className="font-semibold">Qualification:</span> {applicantQualification}</div>}
+                          {cleanedNote && <div className="text-slate-600 line-clamp-2"><span className="font-semibold text-slate-700">Note:</span> {cleanedNote}</div>}
+                        </div>
                       </td>
                       <td className="p-4 text-sm text-slate-600">
                         {formatRelativeTime(app.applied_at)}
