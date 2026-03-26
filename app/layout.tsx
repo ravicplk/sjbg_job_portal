@@ -21,6 +21,7 @@ export default async function RootLayout({
   // x-pathname is stamped reliably by middleware on every request
   const pathname = h.get("x-pathname") || "";
   const isAdmin = pathname.startsWith("/admin");
+  const isAuthPage = pathname === "/login" || pathname === "/register";
 
   if (isAdmin) {
     // Full dark shell — no site navbar / announcement / footer
@@ -31,6 +32,19 @@ export default async function RootLayout({
           style={{ background: "#121212", color: "#fff", minHeight: "100vh" }}
         >
           {children}
+        </body>
+      </html>
+    );
+  }
+
+  if (isAuthPage) {
+    // Auth pages — no navbar or footer, full-screen clean shell
+    return (
+      <html lang="en">
+        <body className={`${inter.variable} font-sans bg-white text-[#333333] antialiased min-h-screen flex flex-col`}>
+          <main className="flex-1 flex flex-col w-full">
+            {children}
+          </main>
         </body>
       </html>
     );
