@@ -42,9 +42,9 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
     }
 
     const { action, title, category, role_type, location, experience_level, description, requirements, salary_range, deadline } = parsed.data
-    const status = action === 'publish' ? 'active' : action === 'draft' ? 'draft' : 'closed'
 
-    const { error } = await supabase.from('jobs').update({
+    // Common fields to update
+    const fields = {
       title,
       category,
       role_type,
@@ -54,8 +54,22 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
       requirements,
       salary_range: salary_range || null,
       deadline: deadline ? deadline : null,
-      status
-    }).eq('id', params.id)
+    }
+
+    if (action === 'publish' && job.status === 'draft') {
+      // Save updated fields but keep as draft, then go to payment
+      const { error } = await supabase.from('jobs').update({ ...fields, status: 'draft' }).eq('id', params.id)
+      if (error) {
+        console.error(error)
+        redirect(`/employer/jobs/${params.id}/edit?error=Could not update job`)
+      }
+      revalidatePath('/employer/dashboard')
+      redirect(`/employer/jobs/${params.id}/payment`)
+    }
+
+    // For active jobs being updated, or draft/close actions
+    const status = action === 'publish' ? 'active' : action === 'draft' ? 'draft' : 'closed'
+    const { error } = await supabase.from('jobs').update({ ...fields, status }).eq('id', params.id)
 
     if (error) {
       console.error(error)
@@ -179,10 +193,11 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
                 type="submit"
                 name="action"
                 value="publish"
-                className="flex-1 px-6 py-3 text-white font-semibold rounded-md transition-colors shadow-sm text-center hover:brightness-110"
+                className="flex-1 px-6 py-3 text-white font-semibold rounded-md transition-colors shadow-sm text-center hover:brightness-110 flex items-center justify-center gap-2"
                 style={{ backgroundColor: '#520120' }}
               >
-                {job.status === 'active' ? 'Update & Keep Posted' : 'Post Job'}
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                {job.status === 'active' ? 'Update & Keep Posted' : 'Post Job · LKR 2,500'}
               </button>
             </div>
             {job.status === 'active' && (

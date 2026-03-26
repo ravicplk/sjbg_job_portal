@@ -64,6 +64,45 @@ textarea:focus {
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
 }
 
+/* ------------------------------
+   Admin dark console theme
+   Scopes to /admin via wrapper class
+-------------------------------- */
+.admin-dark {
+  background: #18191c;
+  color: #ffffff;
+}
+
+.admin-dark .surface-card {
+  background: #1e1e22;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+.admin-dark input,
+.admin-dark select,
+.admin-dark textarea {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(18, 18, 18, 0.7);
+  color: #ffffff;
+}
+
+.admin-dark input::placeholder,
+.admin-dark textarea::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.admin-dark input:focus,
+.admin-dark select:focus,
+.admin-dark textarea:focus {
+  border-color: rgba(0, 180, 255, 0.85);
+  box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.18);
+  outline: none;
+}
+
 .btn-primary-modern {
   background: #102a4c;
   color: #ffffff;
@@ -85,4 +124,10 @@ button,
 
 button:disabled {
   cursor: not-allowed;
+}
+
+/* Admin dark table row hover — pure CSS, no JS handlers needed */
+.admin-dark .table-hover-row:hover,
+.admin-tr-hover:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
