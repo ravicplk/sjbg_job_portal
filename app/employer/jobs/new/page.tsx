@@ -33,8 +33,33 @@ export default async function NewJobPage(props: { searchParams: Promise<{ error?
     }
 
     const { action, title, category, role_type, location, experience_level, description, requirements, salary_range, deadline } = parsed.data
-    const status = action === 'publish' ? 'active' : 'draft'
 
+    if (action === 'publish') {
+      // Save as draft first, then redirect to payment
+      const { data: newJob, error } = await supabase.from('jobs').insert({
+        employer_id: profile!.id,
+        title,
+        category,
+        role_type,
+        location,
+        experience_level,
+        description,
+        requirements,
+        salary_range: salary_range || null,
+        deadline: deadline || null,
+        status: 'draft',
+      }).select('id').single()
+
+      if (error || !newJob) {
+        console.error(error)
+        redirect(`/employer/jobs/new?error=Could not save job`)
+      }
+
+      revalidatePath('/employer/dashboard')
+      redirect(`/employer/jobs/${newJob.id}/payment`)
+    }
+
+    // Save as draft
     const { error } = await supabase.from('jobs').insert({
       employer_id: profile!.id,
       title,
@@ -46,7 +71,7 @@ export default async function NewJobPage(props: { searchParams: Promise<{ error?
       requirements,
       salary_range: salary_range || null,
       deadline: deadline || null,
-      status
+      status: 'draft',
     })
 
     if (error) {
@@ -154,10 +179,11 @@ export default async function NewJobPage(props: { searchParams: Promise<{ error?
                type="submit"
                name="action"
                value="publish"
-               className="flex-1 px-6 py-3 text-white font-semibold rounded-md transition-colors shadow-sm text-center hover:brightness-110"
+               className="flex-1 px-6 py-3 text-white font-semibold rounded-md transition-colors shadow-sm text-center hover:brightness-110 flex items-center justify-center gap-2"
                style={{ backgroundColor: '#520120' }}
              >
-               Post Job
+               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+               Post Job · LKR 2,500
              </button>
           </div>
         </form>

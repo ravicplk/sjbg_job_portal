@@ -74,5 +74,8 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // Stamp pathname so root layout can detect /admin without header-sniffing hacks
+  supabaseResponse.headers.set('x-pathname', request.nextUrl.pathname)
+
   return supabaseResponse
 }

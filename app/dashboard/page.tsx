@@ -4,6 +4,7 @@ import StatCard from '@/components/ui/StatCard'
 import StatusBadge from '@/components/ui/StatusBadge'
 import { formatRelativeTime } from '@/components/ui/JobCard'
 import { redirect } from 'next/navigation'
+import { FileText, CheckCircle, Trophy } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,23 +50,32 @@ export default async function SeekerDashboard(props: { searchParams: Promise<{ a
 
   return (
     <div className="max-w-6xl w-full mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 pb-6 border-b border-slate-200">
         <div>
-          <h1 className="text-3xl font-bold text-primary mb-1">
-            Welcome, {firstName}
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">My Dashboard</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold" style={{ color: '#520120' }}>
+            Welcome back,{' '}
+            <span style={{ color: '#102A4C' }}>{firstName}</span>
           </h1>
-          <div className="flex items-center gap-4 mt-2">
-             <p className="text-slate-600 text-sm">Track your job applications and profile here.</p>
-             <span className="text-slate-300">•</span>
-             <Link href="/profile" className="text-sm font-semibold text-action hover:text-primary transition-colors inline-flex items-center">
-               <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-               Edit Profile & Resume
-             </Link>
-          </div>
+          <p className="text-slate-500 text-sm mt-1">Track your applications and manage your career profile.</p>
         </div>
-        <Link href="/" className="bg-action hover:bg-action-light text-white px-4 py-2 rounded-md font-semibold transition-colors shadow-sm inline-flex items-center text-sm">
-          Browse Jobs
-        </Link>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <Link
+            href="/profile"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-700 hover:border-primary hover:text-primary transition-colors shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+            Edit Profile
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-sm hover:brightness-110 transition-all"
+            style={{ background: '#102A4C' }}
+          >
+            Browse Jobs →
+          </Link>
+        </div>
       </div>
 
       {showAppliedSuccess && (
@@ -75,9 +85,24 @@ export default async function SeekerDashboard(props: { searchParams: Promise<{ a
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <StatCard label="Applications Sent" value={appsSent} />
-        <StatCard label="Shortlisted / Interviews" value={interviews} />
-        <StatCard label="Offers / Hired" value={hired} />
+        <StatCard
+          label="Applications Sent"
+          value={appsSent}
+          tone="maroon"
+          icon={<FileText className="w-5 h-5" style={{ color: '#520120' }} />}
+        />
+        <StatCard
+          label="Shortlisted / Interviews"
+          value={interviews}
+          tone="mustard"
+          icon={<CheckCircle className="w-5 h-5" style={{ color: '#102A4C' }} />}
+        />
+        <StatCard
+          label="Offers / Hired"
+          value={hired}
+          tone="green"
+          icon={<Trophy className="w-5 h-5 text-green-700" />}
+        />
       </div>
 
       <h2 className="text-xl font-bold text-[#333333] mb-4">Recent Applications</h2>

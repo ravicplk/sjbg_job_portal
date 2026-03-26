@@ -6,10 +6,12 @@ import { formatRelativeTime } from '@/components/ui/JobCard'
 import ApplicationStatusSelect from '@/components/ui/ApplicationStatusSelect'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { Briefcase, FileText, Clock } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
-export default async function EmployerDashboard() {
+export default async function EmployerDashboard(props: { searchParams: Promise<{ published?: string }> }) {
+  const searchParams = await props.searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login?message=Please sign in first')
@@ -100,30 +102,88 @@ export default async function EmployerDashboard() {
 
   return (
     <div className="max-w-6xl w-full mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-primary mb-1">
-            Welcome, {profile?.company_name || 'Employer'}
-          </h1>
-          <div className="flex items-center gap-4 mt-2">
-            <p className="text-slate-600 text-sm">Manage your job listings and applicants here.</p>
-            <span className="text-slate-300">•</span>
-            <Link href="/employer/profile" className="text-sm font-semibold text-action hover:text-primary transition-colors inline-flex items-center">
-              <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-              Edit Company Profile
-            </Link>
+      {/* Incomplete profile warning */}
+      {(!profile?.company_name || !profile?.logo_url) && (
+        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 bg-amber-50 border border-amber-200 rounded-2xl">
+          <div className="flex items-center gap-3 flex-1">
+            <span className="text-2xl shrink-0">⚠️</span>
+            <div>
+              <p className="font-bold text-amber-900 text-sm">
+                {!profile?.company_name ? 'Company name is missing' : 'Company logo is missing'}
+              </p>
+              <p className="text-amber-800 text-xs mt-0.5">
+                Your company name and logo appear on job listings. Complete your profile so job seekers can recognise your company.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/employer/profile"
+            className="shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 shadow-sm"
+            style={{ background: '#520120' }}
+          >
+            Complete Profile →
+          </Link>
+        </div>
+      )}
+
+      {/* Payment success banner */}
+      {searchParams?.published === '1' && (
+        <div className="mb-6 flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-2xl text-green-800">
+          <span className="text-2xl">🎉</span>
+          <div>
+            <p className="font-bold">Job Published Successfully!</p>
+            <p className="text-sm text-green-700">Your payment of LKR 2,500 was processed and your job listing is now live.</p>
           </div>
         </div>
-        <Link href="/employer/jobs/new" className="bg-action hover:bg-action-light text-white px-4 py-2 rounded-md font-semibold transition-colors shadow-sm inline-flex items-center">
-          <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
-          Post New Job
-        </Link>
+      )}
+
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-8 pb-5 border-b border-slate-200">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Employer Dashboard</p>
+          <h1 className="text-2xl font-extrabold" style={{ color: '#102A4C' }}>
+            {profile?.company_name || 'Employer'}
+          </h1>
+          <p className="text-slate-500 text-sm mt-0.5">Manage your job listings and review applicants.</p>
+        </div>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <Link
+            href="/employer/profile"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-700 hover:border-primary hover:text-primary transition-colors shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+            Edit Profile
+          </Link>
+          <Link
+            href="/employer/jobs/new"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-sm hover:brightness-110 transition-all"
+            style={{ background: '#102A4C' }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+            Post New Job
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <StatCard label="Active Listings" value={activeListings} />
-        <StatCard label="Total Applications" value={totalApplications} />
-        <StatCard label="Pending Review" value={pendingReview} />
+        <StatCard
+          label="Active Listings"
+          value={activeListings}
+          tone="navy"
+          icon={<Briefcase className="w-5 h-5" style={{ color: '#102A4C' }} />}
+        />
+        <StatCard
+          label="Total Applications"
+          value={totalApplications}
+          tone="maroon"
+          icon={<FileText className="w-5 h-5" style={{ color: '#520120' }} />}
+        />
+        <StatCard
+          label="Pending Review"
+          value={pendingReview}
+          tone="mustard"
+          icon={<Clock className="w-5 h-5" style={{ color: '#102A4C' }} />}
+        />
       </div>
 
       <h2 className="text-xl font-bold text-[#333333] mb-4">Recent Listings</h2>

@@ -2,11 +2,26 @@ import { createClient } from '@/utils/supabase/server'
 import JobCard from '@/components/ui/JobCard'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export default async function Home(props: {
   searchParams: Promise<{ q?: string; location?: string; category?: string; type?: string; exp?: string }>
 }) {
   const searchParams = await props.searchParams;
   const supabase = await createClient()
+
+  // Fetch announcement text from site_config (falls back gracefully if table doesn't exist yet)
+  let announcementText = 'Now accepting early employer listings for upcoming launch.'
+  try {
+    const { data: cfg } = await supabase
+      .from('site_config')
+      .select('value')
+      .eq('key', 'announcement_text')
+      .maybeSingle()
+    if (cfg?.value) announcementText = cfg.value
+  } catch {
+    // table might not exist yet — ignore
+  }
 
   let query = supabase
     .from('jobs')
@@ -47,6 +62,17 @@ export default async function Home(props: {
 
   return (
     <div className="w-full flex-col flex items-center min-h-screen">
+      {/* Announcement Bar — homepage only */}
+      <div
+        className="w-full text-center text-sm font-semibold py-2 px-4 flex items-center justify-center gap-2"
+        style={{ backgroundColor: '#F2B705', color: '#333333' }}
+      >
+        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.276A1 1 0 0018 15V3z" clipRule="evenodd" />
+        </svg>
+        {announcementText}
+      </div>
+
       {/* Hero Section */}
       <section
         className="w-full py-14 sm:py-16 px-4 bg-primary relative overflow-hidden"
