@@ -22,6 +22,7 @@ export default async function JobDetailPage(props: {
 
   let role = null;
   let hasApplied = false;
+  let savedResumes: Array<{ id: string; slot: number; remark: string | null; resume_path: string }> = []
   if (user) {
     const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single()
     role = userData?.role
@@ -31,6 +32,12 @@ export default async function JobDetailPage(props: {
       if (profile) {
         const { data: app } = await supabase.from('applications').select('id').eq('job_id', job?.id).eq('seeker_id', profile.id).maybeSingle()
         hasApplied = !!app
+        const { data: resumes } = await supabase
+          .from('seeker_resumes')
+          .select('id, slot, remark, resume_path')
+          .eq('seeker_id', profile.id)
+          .order('slot', { ascending: true })
+        savedResumes = resumes || []
       }
     }
   }
@@ -63,9 +70,31 @@ export default async function JobDetailPage(props: {
     if (!parsed.success) redirect(`/jobs/${jobId}?applyError=${encodeURIComponent(parsed.error.issues[0]?.message || 'Invalid application data')}#apply-section`)
     const { full_name, telephone, qualification, cover_note } = parsed.data
 
+    const resumeSource = String(formData.get('resume_source') || 'saved')
+    const selectedSavedResumeId = String(formData.get('saved_resume_id') || '')
     const cvFile = formData.get('cv_file') as File
-    let resumePath: string | null = profile.resume_url || null
-    if (cvFile && cvFile.size > 0) {
+    let resumePath: string | null = null
+    let resumeRemark: string | null = null
+
+    if (resumeSource === 'saved') {
+      if (selectedSavedResumeId) {
+        const { data: selectedResume } = await supabase
+          .from('seeker_resumes')
+          .select('id, resume_path, remark')
+          .eq('id', selectedSavedResumeId)
+          .eq('seeker_id', profile.id)
+          .maybeSingle()
+        if (!selectedResume) {
+          redirect(`/jobs/${jobId}?applyError=${encodeURIComponent('Selected saved CV was not found.')}#apply-section`)
+        }
+        resumePath = selectedResume.resume_path
+        resumeRemark = selectedResume.remark || null
+      } else {
+        resumePath = profile.resume_url || null
+      }
+    }
+
+    if (resumeSource === 'new' && cvFile && cvFile.size > 0) {
       if (!isValidResumeFile(cvFile)) {
         redirect(`/jobs/${jobId}?applyError=${encodeURIComponent('CV must be PDF/DOC/DOCX and less than 5MB')}#apply-section`)
       }
@@ -78,13 +107,11 @@ export default async function JobDetailPage(props: {
 
       if (uploadError || !uploadData) redirect(`/jobs/${jobId}?applyError=${encodeURIComponent(uploadError?.message || 'Could not upload CV')}#apply-section`)
       resumePath = uploadData.path
-
-      // Keep profile resume updated to the latest uploaded CV for easier future applications.
-      await supabase.from('seeker_profiles').update({ resume_url: resumePath }).eq('user_id', user.id)
+      resumeRemark = 'Uploaded for this application'
     }
 
     if (!resumePath) {
-      redirect(`/jobs/${jobId}?applyError=${encodeURIComponent('Please upload your CV or add a resume in your profile before applying.')}#apply-section`)
+      redirect(`/jobs/${jobId}?applyError=${encodeURIComponent('Please choose a saved CV or upload a new one.')}#apply-section`)
     }
 
     const mergedNote = [
@@ -100,6 +127,8 @@ export default async function JobDetailPage(props: {
       job_id: jobId,
       seeker_id: profile.id,
       cover_note: mergedNote || null,
+      resume_path: resumePath,
+      resume_remark: resumeRemark,
       status: 'pending'
     })
 
@@ -315,7 +344,7 @@ export default async function JobDetailPage(props: {
         <section id="apply-section" className="w-full max-w-5xl mx-auto px-4 pb-14">
           <div className="surface-card p-6 sm:p-8">
             <h2 className="text-2xl font-bold text-primary mb-2">Apply for this role</h2>
-            <p className="text-sm text-slate-700 mb-6">Enter your qualification and upload your CV to complete your application.</p>
+            <p className="text-sm text-slate-700 mb-6">Enter your details, then choose a saved CV or upload a new one for this application.</p>
 
             {!user ? (
               <div className="bg-amber-50 border border-amber-200 rounded-md p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -377,16 +406,48 @@ export default async function JobDetailPage(props: {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-800 mb-2">
-                    Upload CV <span className="text-slate-500 font-normal">(PDF/DOC/DOCX, max 5MB)</span>
-                  </label>
-                  <input
-                    type="file"
-                    name="cv_file"
-                    accept=".pdf,.doc,.docx"
-                    className="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-action file:text-white hover:file:bg-action-light"
-                  />
+                <div className="rounded-md border border-slate-200 p-4 space-y-4 bg-slate-50/50">
+                  <p className="text-sm font-semibold text-slate-800">CV for this application</p>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input type="radio" name="resume_source" value="saved" defaultChecked />
+                      Use saved CV from profile
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input type="radio" name="resume_source" value="new" />
+                      Upload new CV from computer
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-800 mb-2">
+                      Saved CV
+                    </label>
+                    <select
+                      name="saved_resume_id"
+                      defaultValue={savedResumes[0]?.id || ''}
+                      className="w-full px-4 py-2 border rounded-md bg-white text-slate-800"
+                    >
+                      <option value="">Use default profile CV</option>
+                      {savedResumes.map((resume) => (
+                        <option key={resume.id} value={resume.id}>
+                          {`Slot ${resume.slot}${resume.remark ? ` - ${resume.remark}` : ''}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-800 mb-2">
+                      Upload New CV <span className="text-slate-500 font-normal">(PDF/DOC/DOCX, max 5MB)</span>
+                    </label>
+                    <input
+                      type="file"
+                      name="cv_file"
+                      accept=".pdf,.doc,.docx"
+                      className="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-action file:text-white hover:file:bg-action-light"
+                    />
+                  </div>
                 </div>
 
                 <div>

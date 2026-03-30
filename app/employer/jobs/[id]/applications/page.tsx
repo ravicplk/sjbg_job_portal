@@ -25,6 +25,8 @@ export default async function JobApplicationsPage(props: { params: Promise<{ id:
       status,
       applied_at,
       cover_note,
+      resume_path,
+      resume_remark,
       seeker_profiles (
         id,
         user_id,
@@ -44,11 +46,12 @@ export default async function JobApplicationsPage(props: { params: Promise<{ id:
   const appsWithResumes = await Promise.all(applicationsData.map(async (app: any) => {
      let resumeSignedUrl = null;
      const seeker = Array.isArray(app.seeker_profiles) ? app.seeker_profiles[0] : app.seeker_profiles;
-     if (seeker?.resume_url) {
-       const { data } = await supabase.storage.from('resumes').createSignedUrl(seeker.resume_url, 3600)
+     const resumePath = app.resume_path || seeker?.resume_url
+     if (resumePath) {
+       const { data } = await supabase.storage.from('resumes').createSignedUrl(resumePath, 3600)
        resumeSignedUrl = data?.signedUrl
      }
-     return { ...app, resumeSignedUrl, _seeker: seeker }
+     return { ...app, resumeSignedUrl, _seeker: seeker, _resumePath: resumePath }
   }))
 
   const updateStatus = async (appId: string, newStatus: string) => {
@@ -148,10 +151,15 @@ export default async function JobApplicationsPage(props: { params: Promise<{ id:
                         </div>
                         <div className="mb-2">
                           {app.resumeSignedUrl ? (
-                            <a href={app.resumeSignedUrl} target="_blank" rel="noopener noreferrer" className="text-action hover:text-primary font-semibold inline-flex items-center transition-colors">
-                              <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                              View Resume
-                            </a>
+                            <div className="space-y-1">
+                              <a href={app.resumeSignedUrl} target="_blank" rel="noopener noreferrer" className="text-action hover:text-primary font-semibold inline-flex items-center transition-colors">
+                                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                View Resume
+                              </a>
+                              {app.resume_remark && (
+                                <div className="text-xs text-slate-600">CV note: {app.resume_remark}</div>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-slate-500">No Resume</span>
                           )}
