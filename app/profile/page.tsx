@@ -24,19 +24,55 @@ export default async function SeekerProfile(props: { searchParams: Promise<{ err
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const resumeFile = formData.get('resume') as File
-    const { data: existingProfile } = await supabase.from('seeker_profiles').select('resume_url').eq('user_id', user.id).single()
-    let resume_url = existingProfile?.resume_url
+    const { data: existingProfile } = await supabase
+      .from('seeker_profiles')
+      .select('id, resume_url')
+      .eq('user_id', user.id)
+      .single()
+    if (!existingProfile) {
+      return redirect(`/profile?error=${encodeURIComponent('Seeker profile not found.')}`)
+    }
 
-    if (resumeFile && resumeFile.size > 0) {
-      if (!isValidResumeFile(resumeFile)) {
-        return redirect(`/profile?error=${encodeURIComponent('Resume must be PDF/DOC/DOCX and less than 5MB')}`)
+    const { data: existingResumes } = await supabase
+      .from('seeker_resumes')
+      .select('id, slot, resume_path, remark')
+      .eq('seeker_id', existingProfile.id)
+    const resumeBySlot = new Map<number, any>((existingResumes || []).map((r: any) => [r.slot, r]))
+
+    for (let slot = 1; slot <= 3; slot += 1) {
+      const resumeFile = formData.get(`resume_${slot}`) as File
+      const remarkRaw = String(formData.get(`resume_remark_${slot}`) || '').trim()
+      const remark = remarkRaw ? remarkRaw.slice(0, 120) : null
+      const current = resumeBySlot.get(slot)
+
+      if (resumeFile && resumeFile.size > 0) {
+        if (!isValidResumeFile(resumeFile)) {
+          return redirect(`/profile?error=${encodeURIComponent(`Resume ${slot} must be PDF/DOC/DOCX and less than 5MB`)}`)
+        }
+        const fileExt = resumeFile.name.split('.').pop()
+        const fileName = `${user.id}-saved-cv-${slot}-${Date.now()}.${fileExt}`
+        const { data, error } = await supabase.storage.from('resumes').upload(fileName, resumeFile, { upsert: true })
+        if (error || !data) {
+          return redirect(`/profile?error=${encodeURIComponent(error?.message || `Could not upload resume ${slot}`)}`)
+        }
+
+        if (current) {
+          await supabase
+            .from('seeker_resumes')
+            .update({ resume_path: data.path, remark })
+            .eq('id', current.id)
+        } else {
+          await supabase
+            .from('seeker_resumes')
+            .insert({ seeker_id: existingProfile.id, slot, resume_path: data.path, remark })
+        }
+      } else if (current) {
+        // Keep existing file and allow remark edits without re-uploading.
+        await supabase
+          .from('seeker_resumes')
+          .update({ remark })
+          .eq('id', current.id)
       }
-      const fileExt = resumeFile.name.split('.').pop()
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`
-      const { data, error } = await supabase.storage.from('resumes').upload(fileName, resumeFile, { upsert: true })
-      if (!error && data) resume_url = data.path
-      else if (error) return redirect(`/profile?error=${encodeURIComponent(error.message || 'Could not upload resume')}`)
     }
 
     const parsed = seekerProfileSchema.safeParse({
@@ -50,16 +86,32 @@ export default async function SeekerProfile(props: { searchParams: Promise<{ err
     }
 
     const { headline, location, phone, linkedin_url } = parsed.data
-    await supabase.from('seeker_profiles').update({ headline, location, phone, linkedin_url, resume_url }).eq('user_id', user.id)
+    const { data: refreshedResumes } = await supabase
+      .from('seeker_resumes')
+      .select('resume_path')
+      .eq('seeker_id', existingProfile.id)
+      .order('slot', { ascending: true })
+      .limit(1)
+    const legacyResume = refreshedResumes?.[0]?.resume_path || existingProfile.resume_url || null
+
+    await supabase
+      .from('seeker_profiles')
+      .update({ headline, location, phone, linkedin_url, resume_url: legacyResume })
+      .eq('user_id', user.id)
     revalidatePath('/profile')
     revalidatePath('/dashboard')
     redirect('/dashboard')
   }
 
-  let downloadUrl = null
-  if (profile?.resume_url) {
-    const { data } = await supabase.storage.from('resumes').createSignedUrl(profile.resume_url, 3600)
-    downloadUrl = data?.signedUrl
+  const { data: savedResumes } = await supabase
+    .from('seeker_resumes')
+    .select('id, slot, resume_path, remark')
+    .eq('seeker_id', profile?.id || '')
+    .order('slot', { ascending: true })
+  const resumeSlotMap = new Map<number, { id: string; slot: number; resume_path: string; remark: string | null; signedUrl: string | null }>()
+  for (const resume of savedResumes || []) {
+    const { data } = await supabase.storage.from('resumes').createSignedUrl(resume.resume_path, 3600)
+    resumeSlotMap.set(resume.slot, { ...resume, signedUrl: data?.signedUrl || null })
   }
 
   const userMeta = profile?.users as any
@@ -165,44 +217,57 @@ export default async function SeekerProfile(props: { searchParams: Promise<{ err
           </div>
         </div>
 
-        {/* Resume Upload */}
+        {/* Resume Uploads */}
         <div className="surface-card p-6">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-5">Resume Document</h2>
-          <div
-            className="rounded-xl border-2 border-dashed p-6 text-center"
-            style={{ borderColor: '#e2e8f0' }}
-          >
-            <div className="w-10 h-10 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            {downloadUrl ? (
-              <div className="mb-3">
-                <a
-                  href={downloadUrl}
-                  target="_blank"
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-                  style={{ color: '#520120', background: '#fdf4f7', border: '1px solid #f3c6d0' }}
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  View Current Resume
-                </a>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400 mb-3">No resume uploaded yet</p>
-            )}
-            <input
-              type="file"
-              name="resume"
-              accept=".pdf,.doc,.docx"
-              className="text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:text-white hover:file:brightness-110 transition-colors cursor-pointer"
-              style={{ '--file-bg': '#102A4C' } as any}
-            />
-            <p className="text-xs text-slate-400 mt-3">PDF, DOC or DOCX · Max 5 MB · Kept private</p>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-5">Saved CVs (up to 3)</h2>
+          <div className="space-y-4">
+            {[1, 2, 3].map((slot) => {
+              const item = resumeSlotMap.get(slot)
+              return (
+                <div key={slot} className="rounded-xl border border-slate-200 p-4 bg-slate-50/60">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                    <p className="text-sm font-bold text-slate-700">CV Slot {slot}</p>
+                    {item?.signedUrl ? (
+                      <a
+                        href={item.signedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                        style={{ color: '#520120', background: '#fdf4f7', border: '1px solid #f3c6d0' }}
+                      >
+                        View saved CV
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-500">No file saved yet</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Remark</label>
+                      <input
+                        type="text"
+                        name={`resume_remark_${slot}`}
+                        defaultValue={item?.remark || ''}
+                        maxLength={120}
+                        placeholder="e.g. Backend-focused CV"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1.5">Upload/Replace file</label>
+                      <input
+                        type="file"
+                        name={`resume_${slot}`}
+                        accept=".pdf,.doc,.docx"
+                        className="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-action file:text-white hover:file:bg-action-light"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
+          <p className="text-xs text-slate-400 mt-3">Each file: PDF/DOC/DOCX, max 5 MB. You can select these when applying to jobs.</p>
         </div>
 
         {/* Save button */}

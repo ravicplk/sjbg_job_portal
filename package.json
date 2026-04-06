@@ -6,7 +6,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "npm run test:all",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:api": "playwright test --project=api",
+    "test:e2e:web": "playwright test --project=chromium",
+    "test:all:fast": "npm run test:unit && npm run test:e2e:api",
+    "test:all": "npm run test:unit && npm run test:e2e:api && npm run test:e2e:web",
+    "test:all:full": "npm run test:unit && npm run test:e2e:api && npm run test:e2e:web && npm run test:load:base",
+    "test:load": "k6 run tests/load/smoke-jobs.js",
+    "test:load:base": "node tests/load/run-k6.mjs http://localhost:3000"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -24,13 +37,20 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "jsdom": "^26.1.0",
+    "vite-tsconfig-paths": "^5.1.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }

@@ -41,6 +41,8 @@ export default async function EmployerDashboard(props: { searchParams: Promise<{
       status,
       applied_at,
       cover_note,
+      resume_path,
+      resume_remark,
       jobs!inner (
         id,
         title,
@@ -62,8 +64,9 @@ export default async function EmployerDashboard(props: { searchParams: Promise<{
     appsReviewListRaw.map(async (app: any) => {
       const seeker = Array.isArray(app.seeker_profiles) ? app.seeker_profiles[0] : app.seeker_profiles
       let resumeSignedUrl: string | null = null
-      if (seeker?.resume_url) {
-        const { data } = await supabase.storage.from('resumes').createSignedUrl(seeker.resume_url, 3600)
+      const resumePath = app.resume_path || seeker?.resume_url
+      if (resumePath) {
+        const { data } = await supabase.storage.from('resumes').createSignedUrl(resumePath, 3600)
         resumeSignedUrl = data?.signedUrl || null
       }
       return { ...app, _seeker: seeker, resumeSignedUrl }
@@ -284,9 +287,14 @@ export default async function EmployerDashboard(props: { searchParams: Promise<{
                       </td>
                       <td className="p-4 text-sm">
                         {app.resumeSignedUrl ? (
-                          <a href={app.resumeSignedUrl} target="_blank" rel="noopener noreferrer" className="text-action hover:text-primary font-semibold transition-colors">
-                            View CV
-                          </a>
+                          <div className="space-y-1">
+                            <a href={app.resumeSignedUrl} target="_blank" rel="noopener noreferrer" className="text-action hover:text-primary font-semibold transition-colors">
+                              View CV
+                            </a>
+                            {app.resume_remark && (
+                              <div className="text-xs text-slate-500">{app.resume_remark}</div>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-slate-500">No CV</span>
                         )}
