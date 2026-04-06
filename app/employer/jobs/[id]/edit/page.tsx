@@ -2,9 +2,12 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
+import { jobEditSchema } from '@/utils/validation/forms'
+import ConfirmSubmitButton from '@/components/ui/ConfirmSubmitButton'
 
-export default async function EditJobPage(props: { params: Promise<{ id: string }> }) {
+export default async function EditJobPage(props: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const params = await props.params;
+  const searchParams = await props.searchParams;
   const supabase = await createClient()
   
   const { data: job, error: fetchErr } = await supabase
@@ -21,20 +24,27 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
     'use server'
     const supabase = await createClient()
 
-    const action = formData.get('action') as string // 'draft' | 'publish' | 'closed'
-    const status = action === 'publish' ? 'active' : action === 'draft' ? 'draft' : 'closed'
+    const parsed = jobEditSchema.safeParse({
+      action: formData.get('action'),
+      title: formData.get('title'),
+      category: formData.get('category'),
+      role_type: formData.get('role_type'),
+      location: formData.get('location'),
+      experience_level: formData.get('experience_level'),
+      description: formData.get('description'),
+      requirements: formData.get('requirements'),
+      salary_range: formData.get('salary_range'),
+      deadline: formData.get('deadline'),
+    })
+    if (!parsed.success) {
+      const message = encodeURIComponent(parsed.error.issues[0]?.message || 'Invalid job data')
+      return redirect(`/employer/jobs/${params.id}/edit?error=${message}`)
+    }
 
-    const title = formData.get('title') as string
-    const category = formData.get('category') as string
-    const role_type = formData.get('role_type') as string
-    const location = formData.get('location') as string
-    const experience_level = formData.get('experience_level') as string
-    const description = formData.get('description') as string
-    const requirements = formData.get('requirements') as string
-    const salary_range = formData.get('salary_range') as string
-    const deadline = formData.get('deadline') as string
+    const { action, title, category, role_type, location, experience_level, description, requirements, salary_range, deadline } = parsed.data
 
-    const { error } = await supabase.from('jobs').update({
+    // Common fields to update
+    const fields = {
       title,
       category,
       role_type,
@@ -44,8 +54,22 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
       requirements,
       salary_range: salary_range || null,
       deadline: deadline ? deadline : null,
-      status
-    }).eq('id', params.id)
+    }
+
+    if (action === 'publish' && job.status === 'draft') {
+      // Save updated fields but keep as draft, then go to payment
+      const { error } = await supabase.from('jobs').update({ ...fields, status: 'draft' }).eq('id', params.id)
+      if (error) {
+        console.error(error)
+        redirect(`/employer/jobs/${params.id}/edit?error=Could not update job`)
+      }
+      revalidatePath('/employer/dashboard')
+      redirect(`/employer/jobs/${params.id}/payment`)
+    }
+
+    // For active jobs being updated, or draft/close actions
+    const status = action === 'publish' ? 'active' : action === 'draft' ? 'draft' : 'closed'
+    const { error } = await supabase.from('jobs').update({ ...fields, status }).eq('id', params.id)
 
     if (error) {
       console.error(error)
@@ -76,15 +100,22 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
           Back to Dashboard
         </Link>
         <form action={deleteJob}>
-          <button type="submit" className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors" onClick={(e) => { if (!confirm('Are you sure you want to delete this job listing? This action cannot be undone.')) e.preventDefault() }}>
-            Delete Listing
-          </button>
+          <ConfirmSubmitButton
+            label="Delete Listing"
+            className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors"
+            confirmMessage="Are you sure you want to delete this job listing? This action cannot be undone."
+          />
         </form>
       </div>
       
       <h1 className="text-3xl font-serif font-bold text-primary mb-8">Edit Job: {job.title}</h1>
       
-      <div className="bg-white border rounded-lg p-6 sm:p-8 shadow-sm">
+      <div className="surface-card p-6 sm:p-8">
+        {searchParams?.error && (
+          <p className="mb-6 p-4 bg-red-100 text-red-700 text-sm border-l-4 border-red-500 rounded">
+            {searchParams.error}
+          </p>
+        )}
         <form action={updateJob} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
@@ -153,19 +184,27 @@ export default async function EditJobPage(props: { params: Promise<{ id: string 
             </div>
           </div>
           
-          <div className="flex gap-4 pt-6 border-t border-slate-100 flex-col sm:flex-row mt-4">
-             {job.status === 'active' ? (
-               <button type="submit" name="action" value="closed" className="flex-1 px-6 py-3 bg-red-50 text-red-700 border border-red-200 font-medium rounded-md hover:bg-red-100 transition-colors shadow-sm text-center">
-                 Close Job
-               </button>
-             ) : (
-               <button type="submit" name="action" value="draft" className="flex-1 px-6 py-3 bg-white border border-slate-300 text-slate-700 font-medium rounded-md hover:bg-slate-50 transition-colors shadow-sm text-center">
-                 Save as Draft
-               </button>
-             )}
-             <button type="submit" name="action" value="publish" className="flex-1 px-6 py-3 bg-primary text-white font-medium rounded-md hover:bg-primary-light transition-colors shadow-sm text-center">
-               {job.status === 'active' ? 'Update Job Details' : 'Publish Job'}
-             </button>
+          <div className="pt-6 border-t border-slate-100 mt-4 space-y-3">
+            <div className="flex gap-4 flex-col sm:flex-row">
+              <button type="submit" name="action" value="draft" className="flex-1 px-6 py-3 bg-white border border-slate-300 text-slate-700 font-medium rounded-md hover:bg-slate-50 transition-colors shadow-sm text-center">
+                Save as Draft
+              </button>
+              <button
+                type="submit"
+                name="action"
+                value="publish"
+                className="flex-1 px-6 py-3 text-white font-semibold rounded-md transition-colors shadow-sm text-center hover:brightness-110 flex items-center justify-center gap-2"
+                style={{ backgroundColor: '#520120' }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                {job.status === 'active' ? 'Update & Keep Posted' : 'Post Job · LKR 2,500'}
+              </button>
+            </div>
+            {job.status === 'active' && (
+              <button type="submit" name="action" value="closed" className="w-full px-6 py-3 bg-red-50 text-red-700 border border-red-200 font-medium rounded-md hover:bg-red-100 transition-colors shadow-sm text-center">
+                Close Job
+              </button>
+            )}
           </div>
         </form>
       </div>

@@ -1,9 +1,16 @@
 import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
+import { registerSchema } from '@/utils/validation/forms'
 
 export async function POST(request: Request) {
   try {
-    const { email, password, firstName, lastName, role } = await request.json()
+    const payload = await request.json()
+    const parsed = registerSchema.safeParse(payload)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid registration data' }, { status: 400 })
+    }
+
+    const { email, password, firstName, lastName, role } = parsed.data
     const supabase = await createClient()
 
     const { data, error } = await supabase.auth.signUp({

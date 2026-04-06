@@ -2,25 +2,132 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #333333;
+  --primary: #520120;
+  --primary-dark: #3C0018;
+  --accent: #F2B705;
+  --gold: #E6A817;
+  --midnight: #111827;
+  --charcoal: #1E1E1E;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-inter);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.section-dark {
+  background: var(--midnight);
+  color: #ffffff;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  color: #333333;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #e6a817;
+  box-shadow: 0 0 0 3px rgba(230, 168, 23, 0.2);
+  outline: none;
+}
+
+.surface-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.9rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+/* ------------------------------
+   Admin dark console theme
+   Scopes to /admin via wrapper class
+-------------------------------- */
+.admin-dark {
+  background: #18191c;
+  color: #ffffff;
+}
+
+.admin-dark .surface-card {
+  background: #1e1e22;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+.admin-dark input,
+.admin-dark select,
+.admin-dark textarea {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(18, 18, 18, 0.7);
+  color: #ffffff;
+}
+
+.admin-dark input::placeholder,
+.admin-dark textarea::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.admin-dark input:focus,
+.admin-dark select:focus,
+.admin-dark textarea:focus {
+  border-color: rgba(0, 180, 255, 0.85);
+  box-shadow: 0 0 0 3px rgba(0, 180, 255, 0.18);
+  outline: none;
+}
+
+.btn-primary-modern {
+  background: #102a4c;
+  color: #ffffff;
+  border: 1px solid #0b1d36;
+  border-radius: 0.45rem;
+  font-weight: 600;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-primary-modern:hover {
+  background: #1d3d68;
+}
+
+a,
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Admin dark table row hover — pure CSS, no JS handlers needed */
+.admin-dark .table-hover-row:hover,
+.admin-tr-hover:hover {
+  background: rgba(255, 255, 255, 0.03);
 }

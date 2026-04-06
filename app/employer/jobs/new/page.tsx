@@ -2,8 +2,10 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
+import { jobCreateSchema } from '@/utils/validation/forms'
 
-export default async function NewJobPage() {
+export default async function NewJobPage(props: { searchParams: Promise<{ error?: string }> }) {
+  const searchParams = await props.searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   
@@ -13,19 +15,51 @@ export default async function NewJobPage() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase.from('employer_profiles').select('id').eq('user_id', user!.id).single()
 
-    const action = formData.get('action') as string // 'draft' | 'publish'
-    const status = action === 'publish' ? 'active' : 'draft'
+    const parsed = jobCreateSchema.safeParse({
+      action: formData.get('action'),
+      title: formData.get('title'),
+      category: formData.get('category'),
+      role_type: formData.get('role_type'),
+      location: formData.get('location'),
+      experience_level: formData.get('experience_level'),
+      description: formData.get('description'),
+      requirements: formData.get('requirements'),
+      salary_range: formData.get('salary_range'),
+      deadline: formData.get('deadline'),
+    })
+    if (!parsed.success) {
+      const message = encodeURIComponent(parsed.error.issues[0]?.message || 'Invalid job data')
+      return redirect(`/employer/jobs/new?error=${message}`)
+    }
 
-    const title = formData.get('title') as string
-    const category = formData.get('category') as string
-    const role_type = formData.get('role_type') as string
-    const location = formData.get('location') as string
-    const experience_level = formData.get('experience_level') as string
-    const description = formData.get('description') as string
-    const requirements = formData.get('requirements') as string
-    const salary_range = formData.get('salary_range') as string
-    const deadline = formData.get('deadline') as string
+    const { action, title, category, role_type, location, experience_level, description, requirements, salary_range, deadline } = parsed.data
 
+    if (action === 'publish') {
+      // Save as draft first, then redirect to payment
+      const { data: newJob, error } = await supabase.from('jobs').insert({
+        employer_id: profile!.id,
+        title,
+        category,
+        role_type,
+        location,
+        experience_level,
+        description,
+        requirements,
+        salary_range: salary_range || null,
+        deadline: deadline || null,
+        status: 'draft',
+      }).select('id').single()
+
+      if (error || !newJob) {
+        console.error(error)
+        redirect(`/employer/jobs/new?error=Could not save job`)
+      }
+
+      revalidatePath('/employer/dashboard')
+      redirect(`/employer/jobs/${newJob.id}/payment`)
+    }
+
+    // Save as draft
     const { error } = await supabase.from('jobs').insert({
       employer_id: profile!.id,
       title,
@@ -37,7 +71,7 @@ export default async function NewJobPage() {
       requirements,
       salary_range: salary_range || null,
       deadline: deadline || null,
-      status
+      status: 'draft',
     })
 
     if (error) {
@@ -59,7 +93,12 @@ export default async function NewJobPage() {
       
       <h1 className="text-3xl font-serif font-bold text-primary mb-8">Post a New Job</h1>
       
-      <div className="bg-white border rounded-lg p-6 sm:p-8 shadow-sm">
+      <div className="surface-card p-6 sm:p-8">
+        {searchParams?.error && (
+          <p className="mb-6 p-4 bg-red-100 text-red-700 text-sm border-l-4 border-red-500 rounded">
+            {searchParams.error}
+          </p>
+        )}
         <form action={saveJob} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
@@ -136,8 +175,15 @@ export default async function NewJobPage() {
              <button type="submit" name="action" value="draft" className="flex-1 px-6 py-3 bg-white border border-slate-300 text-slate-700 font-medium rounded-md hover:bg-slate-50 transition-colors shadow-sm text-center">
                Save as Draft
              </button>
-             <button type="submit" name="action" value="publish" className="flex-1 px-6 py-3 bg-primary text-white font-medium rounded-md hover:bg-primary-light transition-colors shadow-sm text-center">
-               Publish Job
+             <button
+               type="submit"
+               name="action"
+               value="publish"
+               className="flex-1 px-6 py-3 text-white font-semibold rounded-md transition-colors shadow-sm text-center hover:brightness-110 flex items-center justify-center gap-2"
+               style={{ backgroundColor: '#520120' }}
+             >
+               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+               Post Job · LKR 2,500
              </button>
           </div>
         </form>
