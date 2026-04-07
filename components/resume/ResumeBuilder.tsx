@@ -199,7 +199,7 @@ export default function ResumeBuilder({ userProfile }: { userProfile: any }) {
           ) : skillsSaved ? (
             <><CheckCircle className="w-4 h-4" /> Saved!</>
           ) : (
-            <><Save className="w-4 h-4" /> Save Skills to Profile</>
+            <><Save className="w-4 h-4" /> Save</>
           )}
         </button>
       )}

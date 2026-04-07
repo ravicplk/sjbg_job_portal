@@ -49,7 +49,8 @@ export default async function SeekerDashboard(props: { searchParams: Promise<{ a
   const firstName = userMeta?.first_name || 'Seeker'
 
   return (
-    <div className="max-w-6xl w-full mx-auto px-4 py-8">
+    <div className="w-full bg-slate-50 min-h-screen">
+      <div className="max-w-6xl w-full mx-auto px-4 py-8">
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 pb-6 border-b border-slate-200">
         <div>
@@ -171,6 +172,7 @@ export default async function SeekerDashboard(props: { searchParams: Promise<{ a
             </table>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

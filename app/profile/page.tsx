@@ -119,7 +119,8 @@ export default async function SeekerProfile(props: { searchParams: Promise<{ err
   const initials = fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
 
   return (
-    <div className="max-w-3xl w-full mx-auto px-4 py-10">
+    <div className="w-full bg-slate-50 min-h-screen">
+      <div className="max-w-3xl w-full mx-auto px-4 py-10">
 
       {/* Back link */}
       <Link
@@ -281,6 +282,7 @@ export default async function SeekerProfile(props: { searchParams: Promise<{ err
           </button>
         </div>
       </form>
+      </div>
     </div>
   )
 }
