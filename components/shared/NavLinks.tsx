@@ -11,6 +11,11 @@ type Props = {
 export default function NavLinks({ role, hasUser }: Props) {
   const pathname = usePathname()
 
+  // Hide center navigation on auth pages (sign in / sign up).
+  if (pathname === '/login' || pathname === '/register') {
+    return null
+  }
+
   const linkCls = (href: string) => {
     const exact = href === '/'
     const isActive = exact
