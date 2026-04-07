@@ -9,6 +9,9 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "SJBG Job Portal",
   description: "Jobs inside the Twin Cities Catholic business community.",
+  icons: {
+    icon: "/logo.avif",
+  },
 };
 
 export default async function RootLayout({

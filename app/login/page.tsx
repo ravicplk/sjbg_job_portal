@@ -146,14 +146,9 @@ export default async function LoginPage(props: { searchParams: Promise<{ message
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-semibold text-slate-700" htmlFor="password">
-                  Password
-                </label>
-                <Link href="/forgot-password" className="text-xs text-primary hover:underline font-medium">
-                  Forgot password?
-                </Link>
-              </div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5" htmlFor="password">
+                Password
+              </label>
               <input
                 id="password"
                 name="password"

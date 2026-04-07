@@ -57,21 +57,30 @@ export default async function SeekerProfile(props: { searchParams: Promise<{ err
         }
 
         if (current) {
-          await supabase
+          const { error: updateErr } = await supabase
             .from('seeker_resumes')
             .update({ resume_path: data.path, remark })
             .eq('id', current.id)
+          if (updateErr) {
+            return redirect(`/profile?error=${encodeURIComponent(updateErr.message || `Could not save resume ${slot}`)}`)
+          }
         } else {
-          await supabase
+          const { error: insertErr } = await supabase
             .from('seeker_resumes')
             .insert({ seeker_id: existingProfile.id, slot, resume_path: data.path, remark })
+          if (insertErr) {
+            return redirect(`/profile?error=${encodeURIComponent(insertErr.message || `Could not save resume ${slot}`)}`)
+          }
         }
       } else if (current) {
         // Keep existing file and allow remark edits without re-uploading.
-        await supabase
+        const { error: updateRemarkErr } = await supabase
           .from('seeker_resumes')
           .update({ remark })
           .eq('id', current.id)
+        if (updateRemarkErr) {
+          return redirect(`/profile?error=${encodeURIComponent(updateRemarkErr.message || `Could not update resume ${slot} remark`)}`)
+        }
       }
     }
 
@@ -86,18 +95,24 @@ export default async function SeekerProfile(props: { searchParams: Promise<{ err
     }
 
     const { headline, location, phone, linkedin_url } = parsed.data
-    const { data: refreshedResumes } = await supabase
+    const { data: refreshedResumes, error: refreshedResumesErr } = await supabase
       .from('seeker_resumes')
       .select('resume_path')
       .eq('seeker_id', existingProfile.id)
       .order('slot', { ascending: true })
       .limit(1)
+    if (refreshedResumesErr) {
+      return redirect(`/profile?error=${encodeURIComponent(refreshedResumesErr.message || 'Could not refresh saved resumes')}`)
+    }
     const legacyResume = refreshedResumes?.[0]?.resume_path || existingProfile.resume_url || null
 
-    await supabase
+    const { error: profileUpdateErr } = await supabase
       .from('seeker_profiles')
       .update({ headline, location, phone, linkedin_url, resume_url: legacyResume })
       .eq('user_id', user.id)
+    if (profileUpdateErr) {
+      return redirect(`/profile?error=${encodeURIComponent(profileUpdateErr.message || 'Could not update profile')}`)
+    }
     revalidatePath('/profile')
     revalidatePath('/dashboard')
     redirect('/dashboard')
